@@ -10,7 +10,7 @@ import { LayerPanel } from './panels/LayerPanel'
 import { MitigatePanel } from './panels/MitigatePanel'
 import { RegionPanel } from './panels/RegionPanel'
 import { ScenarioPanel } from './panels/ScenarioPanel'
-import { Button, EmptyState, Stepper } from './components/ui'
+import { Button, EmptyState, RiskLegend, Stepper } from './components/ui'
 
 const STAGES: { id: Stage; label: string; hint: string; title: string; description: string }[] = [
   { id: 'observe', label: 'OBSERVAR', hint: 'Conheça a cidade', title: 'Observe a cidade', description: 'Explore o mapa e selecione uma região para entender seus pontos fortes e vulnerabilidades.' },
@@ -225,6 +225,7 @@ export default function App() {
             buildings={city.buildings}
             roads={city.roads}
             trees={city.trees}
+            waterways={city.waterways}
             facilities={city.regions.flatMap((r) => r.facilities)}
             interventions={interventions}
             result={state.current}
@@ -242,6 +243,13 @@ export default function App() {
               {state.error}
             </div>
           )}
+
+          <div className="absolute top-3 left-3 rounded-lg border border-slate-700 bg-slate-950/85 px-3 py-2 shadow-lg">
+            <div className="mb-1 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+              Nível de risco
+            </div>
+            <RiskLegend />
+          </div>
 
           <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-[11px] text-slate-400">
             Arraste para orbitar · scroll para aproximar · clique em uma região

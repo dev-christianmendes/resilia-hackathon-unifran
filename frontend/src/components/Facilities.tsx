@@ -1,4 +1,3 @@
-import { Html } from '@react-three/drei'
 import type { Facility, RegionResult } from '../types'
 import { METERS_TO_UNITS, elevationToHeight } from '../lib/geo'
 import { FACILITY_META, RISK_COLORS, riskFromColorLevel } from '../lib/theme'
@@ -55,11 +54,6 @@ export function Facilities({
                 <meshBasicMaterial color={color} transparent opacity={0.55} side={2} />
               </mesh>
             )}
-            <Html center distanceFactor={70} position={[0, 4.5, 0]} style={{ pointerEvents: 'none' }}>
-              <div className="rounded border border-white/10 bg-slate-950/90 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-slate-100">
-                {meta.icon} {facility.name}
-              </div>
-            </Html>
           </group>
         )
       })}

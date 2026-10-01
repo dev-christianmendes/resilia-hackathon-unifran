@@ -50,14 +50,6 @@ export function Interventions({ interventions, elevationById, onSelectRegion }: 
               <torusGeometry args={[1.9, 0.35, 12, 24]} />
               <meshBasicMaterial color={meta.color} />
             </mesh>
-            <Html center distanceFactor={80} position={[0, 5, 0]} style={{ pointerEvents: 'none' }}>
-              <div
-                className="rounded border px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-slate-950"
-                style={{ backgroundColor: meta.color }}
-              >
-                {meta.icon} {meta.label}
-              </div>
-            </Html>
           </group>
         )
       })}

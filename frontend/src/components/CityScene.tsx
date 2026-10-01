@@ -13,13 +13,14 @@ import type {
   ScenarioType,
   SimulationResult,
   Tree,
+  Waterway,
 } from '../types'
 import { METERS_TO_UNITS, regionAt } from '../lib/geo'
 import { Buildings } from './Buildings'
 import { Facilities, RegionLabel } from './Facilities'
 import { FloodOverlay, HeatEffect, RainEffect } from './ClimateEffects'
 import { Interventions, PlacementGhost } from './Interventions'
-import { Roads, Vegetation } from './CityGeometry'
+import { Roads, Vegetation, Waterways } from './CityGeometry'
 import { Terrain } from './Terrain'
 
 const REGION_BASE = METERS_TO_UNITS * 40
@@ -35,6 +36,7 @@ interface SceneProps {
   buildings: Building[]
   roads: Road[]
   trees: Tree[]
+  waterways: Waterway[]
   facilities: Facility[]
   interventions: Intervention[]
   result: SimulationResult | null
@@ -95,6 +97,7 @@ function CityContents({
   buildings,
   roads,
   trees,
+  waterways,
   facilities,
   interventions,
   result,
@@ -134,7 +137,27 @@ function CityContents({
     return map
   }, [result])
 
+  const regionForWaterway = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const waterway of waterways) {
+      const point = waterway.path[Math.floor(waterway.path.length / 2)]
+      if (!point) continue
+      let closest: Region | null = null
+      let distance = Number.POSITIVE_INFINITY
+      for (const region of regions) {
+        const next = Math.hypot(region.centroid.x - point.x, region.centroid.y - point.y)
+        if (next < distance) {
+          closest = region
+          distance = next
+        }
+      }
+      if (closest) map[waterway.id] = closest.id
+    }
+    return map
+  }, [regions, waterways])
+
   const [placementPoint, setPlacementPoint] = useState<[number, number, number] | null>(null)
+  const [hoveredRegionId, setHoveredRegionId] = useState<string | null>(null)
 
   const handleClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -164,6 +187,7 @@ function CityContents({
         riskByRegion={riskByRegion}
         selectedRegionId={selectedRegionId}
         onSelect={onSelectRegion}
+        onHover={setHoveredRegionId}
       />
 
       {layers.buildings && <Buildings buildings={buildings} elevationById={elevationById} />}
@@ -175,6 +199,12 @@ function CityContents({
         />
       )}
       {layers.vegetation && <Vegetation trees={trees} elevationById={elevationById} />}
+      <Waterways
+        waterways={waterways}
+        riskByRegion={riskByRegion}
+        regionForWaterway={regionForWaterway}
+        visible={layers.terrain || layers.risk}
+      />
       {layers.facilities && (
         <Facilities
           facilities={facilities}
@@ -213,7 +243,7 @@ function CityContents({
         />
       )}
 
-      {regions.map((region) => (
+      {labelRegions(regions, resultByRegion, selectedRegionId, hoveredRegionId).map((region) => (
         <Html
           key={region.id}
           position={[region.centroid.x * METERS_TO_UNITS, 16, -region.centroid.y * METERS_TO_UNITS]}
@@ -233,7 +263,7 @@ function CityContents({
               className="cursor-pointer"
             >
               <RegionLabel
-                name={region.name}
+                name={friendlyRegionName(region.name)}
                 result={resultByRegion[region.id] ?? null}
                 selected={region.id === selectedRegionId}
               />
@@ -270,4 +300,30 @@ function CityContents({
       )}
     </group>
   )
+}
+
+function labelRegions(
+  regions: Region[],
+  results: Record<string, RegionResult>,
+  selectedId: string | null,
+  hoveredId: string | null,
+): Region[] {
+  const ranked = [...regions].sort(
+    (a, b) => (results[b.id]?.risk ?? 0) - (results[a.id]?.risk ?? 0),
+  )
+  const labels: Region[] = []
+  for (const region of ranked) {
+    if (region.id !== selectedId && region.id !== hoveredId && labels.length >= 7) continue
+    const overlaps = labels.some(
+      (other) => Math.hypot(region.centroid.x - other.centroid.x, region.centroid.y - other.centroid.y) < 180,
+    )
+    if (overlaps && region.id !== selectedId && region.id !== hoveredId) continue
+    labels.push(region)
+  }
+  return labels
+}
+
+function friendlyRegionName(name: string): string {
+  const base = name.replace(/\s+\(\d+\)$/, '')
+  return base === "Curso d'água sem nome" ? 'Curso sem nome' : base
 }

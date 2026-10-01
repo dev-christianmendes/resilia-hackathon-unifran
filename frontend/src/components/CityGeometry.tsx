@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Instance, Instances, Line } from '@react-three/drei'
-import type { Road, Tree } from '../types'
+import type { Road, Tree, Waterway } from '../types'
 import { METERS_TO_UNITS, elevationToHeight } from '../lib/geo'
 
 const REGION_BASE = METERS_TO_UNITS * 40
@@ -93,5 +93,45 @@ export function Vegetation({
         <Instance key={item.id} position={item.position} scale={item.scale} />
       ))}
     </Instances>
+  )
+}
+
+export function Waterways({
+  waterways,
+  riskByRegion,
+  regionForWaterway,
+  visible,
+}: {
+  waterways: Waterway[]
+  riskByRegion: Record<string, number>
+  regionForWaterway: Record<string, string>
+  visible: boolean
+}) {
+  if (!visible) return null
+  return (
+    <group>
+      {waterways.map((waterway) => {
+        const risk = riskByRegion[regionForWaterway[waterway.id] ?? ''] ?? 0
+        const color = risk >= 0.62 ? '#f87171' : risk >= 0.34 ? '#fbbf24' : '#38bdf8'
+        const width = Math.max(1.5, Math.min(7, waterway.width_m * METERS_TO_UNITS * 0.8))
+        return (
+          <Line
+            key={waterway.id}
+            points={waterway.path.map(
+              (point) =>
+                [
+                  point.x * METERS_TO_UNITS,
+                  REGION_BASE + 1.2,
+                  -point.y * METERS_TO_UNITS,
+                ] as [number, number, number],
+            )}
+            color={color}
+            lineWidth={width}
+            transparent
+            opacity={0.8}
+          />
+        )
+      })}
+    </group>
   )
 }

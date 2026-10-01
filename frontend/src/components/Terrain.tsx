@@ -17,6 +17,7 @@ interface TerrainProps {
   riskByRegion: Record<string, number>
   selectedRegionId: string | null
   onSelect: (id: string) => void
+  onHover: (id: string | null) => void
 }
 
 export function Terrain({
@@ -29,6 +30,7 @@ export function Terrain({
   riskByRegion,
   selectedRegionId,
   onSelect,
+  onHover,
 }: TerrainProps) {
   const shapes = useMemo(
     () => regions.map((region) => ({ region, shape: regionShape(region) })),
@@ -69,7 +71,7 @@ export function Terrain({
           : showCriticalAreas
             ? region.metrics.flood_risk >= 0.7
               ? '#7f1d1d'
-              : '#1e293b'
+              : `hsl(${145 - region.metrics.impermeability * 35}, 24%, ${18 + region.metrics.vegetation_index * 12}%)`
             : '#1e293b'
         const outline = polygonToScene(region.polygon)
 
@@ -84,9 +86,11 @@ export function Terrain({
               }}
               onPointerOver={() => {
                 document.body.style.cursor = 'pointer'
+                onHover(region.id)
               }}
               onPointerOut={() => {
                 document.body.style.cursor = 'auto'
+                onHover(null)
               }}
             >
               <shapeGeometry args={[shape]} />
