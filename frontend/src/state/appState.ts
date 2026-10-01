@@ -66,6 +66,13 @@ function stageFor(interventions: Intervention[], hasResult: boolean): Stage {
   return hasResult ? 'simulate' : 'observe'
 }
 
+function canEnterStage(state: AppState, stage: Stage): boolean {
+  if (stage === 'observe') return true
+  if (stage === 'simulate') return Boolean(state.city)
+  if (stage === 'mitigate') return Boolean(state.current)
+  return Boolean(state.comparison)
+}
+
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'loadCity':
@@ -120,7 +127,7 @@ export function reducer(state: AppState, action: Action): AppState {
       }
 
     case 'setStage':
-      return { ...state, stage: action.value }
+      return canEnterStage(state, action.value) ? { ...state, stage: action.value } : state
 
     case 'selectRegion':
       return { ...state, selectedRegionId: action.id }

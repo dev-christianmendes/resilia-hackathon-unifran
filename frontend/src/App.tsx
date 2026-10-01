@@ -10,12 +10,13 @@ import { LayerPanel } from './panels/LayerPanel'
 import { MitigatePanel } from './panels/MitigatePanel'
 import { RegionPanel } from './panels/RegionPanel'
 import { ScenarioPanel } from './panels/ScenarioPanel'
-import { Button } from './components/ui'
+import { Button, EmptyState, Stepper } from './components/ui'
 
-const STAGES: { id: Stage; label: string; hint: string }[] = [
-  { id: 'observe', label: 'OBSERVE', hint: 'Situação atual' },
-  { id: 'simulate', label: 'SIMULATE', hint: 'Aplicar cenário' },
-  { id: 'mitigate', label: 'MITIGATE', hint: 'Intervir e comparar' },
+const STAGES: { id: Stage; label: string; hint: string; title: string; description: string }[] = [
+  { id: 'observe', label: 'OBSERVAR', hint: 'Conheça a cidade', title: 'Observe a cidade', description: 'Explore o mapa e selecione uma região para entender seus pontos fortes e vulnerabilidades.' },
+  { id: 'simulate', label: 'SIMULAR', hint: 'Teste um evento', title: 'Simule um evento extremo', description: 'Escolha um cenário e veja onde a cidade pode sofrer mais.' },
+  { id: 'mitigate', label: 'MITIGAR', hint: 'Teste uma solução', title: 'Escolha como agir', description: 'Adicione uma intervenção e veja o efeito esperado no cenário.' },
+  { id: 'compare', label: 'COMPARAR', hint: 'Veja o resultado', title: 'Compare antes e depois', description: 'Confira o que mudou e quais regiões mais se beneficiaram.' },
 ]
 
 export default function App() {
@@ -38,7 +39,6 @@ export default function App() {
     costs,
   } = twin
   const [catalogue, setCatalogue] = useState<InterventionCatalogueItem[]>([])
-  const [rightTab, setRightTab] = useState<'region' | 'copilot'>('region')
 
   useEffect(() => {
     void api
@@ -79,8 +79,7 @@ export default function App() {
   )
 
   const handleApplySuggestion = useCallback(() => {
-    const created = actions.applySuggestion()
-    if (created) setRightTab('region')
+    actions.applySuggestion()
   }, [actions])
 
   const { interventions } = state
@@ -106,7 +105,15 @@ export default function App() {
     )
   }
 
-  const stage = state.interventions.length > 0 ? 'mitigate' : state.stage
+  const stage = state.stage
+  const stageIndex = STAGES.findIndex((item) => item.id === stage)
+  const activeStage = STAGES[stageIndex] ?? STAGES[0]
+  const canNavigate = (id: string) => {
+    if (id === 'observe') return true
+    if (id === 'simulate') return Boolean(state.city)
+    if (id === 'mitigate') return Boolean(state.current)
+    return Boolean(state.comparison)
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
@@ -121,28 +128,12 @@ export default function App() {
           </div>
         </div>
 
-        <nav className="flex items-center gap-1" aria-label="Etapas">
-          {STAGES.map((item, index) => {
-            const active = item.id === stage
-            return (
-              <div key={item.id} className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => actions.setStage(item.id)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold tracking-wider transition-colors ${
-                    active
-                      ? 'bg-sky-500 text-slate-950'
-                      : 'border border-slate-700 text-slate-400 hover:text-slate-200'
-                  }`}
-                  title={item.hint}
-                >
-                  {item.label}
-                </button>
-                {index < STAGES.length - 1 && <span className="text-slate-700">→</span>}
-              </div>
-            )
-          })}
-        </nav>
+        <Stepper
+          steps={STAGES}
+          current={stage}
+          canNavigate={canNavigate}
+          onChange={(id) => actions.setStage(id as Stage)}
+        />
 
         <Button variant="ghost" onClick={actions.reset}>
           Reiniciar
@@ -151,40 +142,80 @@ export default function App() {
 
       <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr_360px]">
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-slate-800 p-3">
-          <ScenarioPanel
-            scenario={state.scenario}
-            stage={stage}
-            result={state.current}
-            busy={state.busy}
-            stale={stale}
-            hasInterventions={interventions.length > 0}
-            onScenarioType={actions.setScenarioType}
-            onIntensity={actions.setIntensity}
-            onDuration={actions.setDuration}
-            onSimulate={() => void actions.runSimulation()}
-          />
-          <MitigatePanel
-            regions={city.regions}
-            interventions={interventions}
-            catalogue={catalogue}
-            costs={costs}
-            placement={state.placement}
-            hasSimulation={state.current !== null}
-            busy={state.busy}
-            budget={budget}
-            optimizer={optimizer}
-            spentBrl={state.runTotals?.total_cost_brl ?? null}
-            withinBudget={state.runTotals?.within_budget ?? true}
-            onBudgetChange={setBudget}
-            onOptimize={() => void optimize()}
-            onApplyOptimizer={applyOptimizerResult}
-            onStartPlacement={actions.startPlacement}
-            onCancelPlacement={actions.cancelPlacement}
-            onRemove={actions.removeIntervention}
-            onImpactFactorChange={handleImpactFactorChange}
-            onResimulate={() => void actions.runSimulation()}
-          />
-          <LayerPanel layers={layers} onToggle={actions.toggleLayer} />
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+            <div className="text-[10px] font-semibold tracking-widest text-sky-300 uppercase">
+              Passo {stageIndex + 1} de {STAGES.length}
+            </div>
+            <h2 className="mt-1 text-lg font-semibold text-slate-100">{activeStage.title}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">{activeStage.description}</p>
+          </div>
+
+          {stage === 'observe' && (
+            <RegionPanel
+              regions={city.regions}
+              selected={selectedRegion}
+              result={selectedResult}
+              results={resultsByRegion}
+              totals={state.current?.totals ?? null}
+              onSelectRegion={actions.selectRegion}
+            />
+          )}
+          {stage === 'simulate' && (
+            <ScenarioPanel
+              scenario={state.scenario}
+              stage={stage}
+              result={state.current}
+              busy={state.busy}
+              stale={stale}
+              hasInterventions={interventions.length > 0}
+              onScenarioType={actions.setScenarioType}
+              onIntensity={actions.setIntensity}
+              onDuration={actions.setDuration}
+              onSimulate={() => void actions.runSimulation()}
+            />
+          )}
+          {stage === 'mitigate' && (
+            <MitigatePanel
+              regions={city.regions}
+              interventions={interventions}
+              catalogue={catalogue}
+              costs={costs}
+              placement={state.placement}
+              hasSimulation={state.current !== null}
+              busy={state.busy}
+              budget={budget}
+              optimizer={optimizer}
+              spentBrl={state.runTotals?.total_cost_brl ?? null}
+              withinBudget={state.runTotals?.within_budget ?? true}
+              onBudgetChange={setBudget}
+              onOptimize={() => void optimize()}
+              onApplyOptimizer={applyOptimizerResult}
+              onStartPlacement={actions.startPlacement}
+              onCancelPlacement={actions.cancelPlacement}
+              onRemove={actions.removeIntervention}
+              onImpactFactorChange={handleImpactFactorChange}
+              onResimulate={() => void actions.runSimulation()}
+            />
+          )}
+          {stage === 'compare' && <ComparePanel comparison={state.comparison} />}
+
+          <div className="mt-auto flex gap-2">
+            <Button
+              variant="ghost"
+              disabled={stageIndex <= 0}
+              onClick={() => actions.setStage(STAGES[stageIndex - 1].id)}
+              className="flex-1"
+            >
+              Voltar
+            </Button>
+            <Button
+              disabled={stageIndex >= STAGES.length - 1 || !canNavigate(STAGES[stageIndex + 1].id)}
+              onClick={() => actions.setStage(STAGES[stageIndex + 1].id)}
+              className="flex-1"
+            >
+              Próximo
+            </Button>
+          </div>
         </aside>
 
         <main className="relative min-h-0">
@@ -218,32 +249,22 @@ export default function App() {
         </main>
 
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto border-l border-slate-800 p-3">
-          <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-800 bg-slate-900/70 p-1">
-            <TabButton
-              active={rightTab === 'region'}
-              onClick={() => setRightTab('region')}
-              label="Região"
+          {selectedRegion ? (
+            <RegionPanel
+              regions={[]}
+              selected={selectedRegion}
+              result={selectedResult}
+              results={resultsByRegion}
+              totals={state.current?.totals ?? null}
+              onSelectRegion={actions.selectRegion}
             />
-            <TabButton
-              active={rightTab === 'copilot'}
-              onClick={() => setRightTab('copilot')}
-              label="Urban Copilot"
-            />
-          </div>
-
-          {rightTab === 'region' ? (
-            <>
-              <RegionPanel
-                regions={city.regions}
-                selected={selectedRegion}
-                result={selectedResult}
-                results={resultsByRegion}
-                totals={state.current?.totals ?? null}
-                onSelectRegion={actions.selectRegion}
-              />
-              <ComparePanel comparison={state.comparison} />
-            </>
           ) : (
+            <EmptyState
+              title="Selecione uma região"
+              description="Clique em um território no mapa para ver os indicadores e entender o risco local."
+            />
+          )}
+          {stage === 'mitigate' && (
             <CopilotPanel
               copilot={copilot}
               onAsk={(question) => void actions.askCopilot(question)}
@@ -251,30 +272,9 @@ export default function App() {
               disabled={!state.current}
             />
           )}
+          {stage !== 'compare' && <LayerPanel layers={layers} onToggle={actions.toggleLayer} />}
         </aside>
       </div>
     </div>
-  )
-}
-
-function TabButton({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean
-  onClick: () => void
-  label: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-        active ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
-      }`}
-    >
-      {label}
-    </button>
   )
 }

@@ -155,6 +155,93 @@ export function RiskLegend() {
   )
 }
 
+export function RiskBadge({
+  level,
+  label,
+}: {
+  level: 'high' | 'moderate' | 'low'
+  label?: string
+}) {
+  const styles = {
+    high: 'border-red-400/50 bg-red-500/15 text-red-200',
+    moderate: 'border-amber-400/50 bg-amber-500/15 text-amber-200',
+    low: 'border-emerald-400/50 bg-emerald-500/15 text-emerald-200',
+  }
+  const labels = { high: 'Alto', moderate: 'Moderado', low: 'Baixo' }
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${styles[level]}`}>
+      <span aria-hidden="true">{level === 'high' ? '!' : level === 'moderate' ? '⚠' : '✓'}</span>
+      {label ?? `Risco ${labels[level]}`}
+    </span>
+  )
+}
+
+export function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-4 py-5 text-center">
+      <p className="text-sm font-medium text-slate-200">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-400">{description}</p>
+    </div>
+  )
+}
+
+export function Tooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="group relative inline-flex">
+      {children}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-56 -translate-x-1/2 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-left text-[11px] leading-relaxed text-slate-200 shadow-xl group-hover:block group-focus-within:block"
+      >
+        {label}
+      </span>
+    </span>
+  )
+}
+
+export function Stepper({
+  steps,
+  current,
+  canNavigate,
+  onChange,
+}: {
+  steps: { id: string; label: string; hint: string }[]
+  current: string
+  canNavigate: (id: string) => boolean
+  onChange: (id: string) => void
+}) {
+  return (
+    <nav aria-label="Progresso do fluxo" className="flex items-center gap-1">
+      {steps.map((step, index) => {
+        const active = step.id === current
+        const enabled = canNavigate(step.id)
+        return (
+          <div key={step.id} className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={!enabled}
+              aria-current={active ? 'step' : undefined}
+              title={enabled ? step.hint : `Complete o passo anterior: ${step.hint}`}
+              onClick={() => onChange(step.id)}
+              className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold tracking-wide transition-colors ${
+                active
+                  ? 'bg-sky-400 text-slate-950'
+                  : enabled
+                    ? 'border border-slate-700 text-slate-300 hover:border-sky-500 hover:text-sky-200'
+                    : 'cursor-not-allowed border border-slate-800 text-slate-600'
+              }`}
+            >
+              <span className="mr-1 opacity-60">{index + 1}</span>
+              {step.label}
+            </button>
+            {index < steps.length - 1 && <span className="text-slate-700">→</span>}
+          </div>
+        )
+      })}
+    </nav>
+  )
+}
+
 export function MetricBar({
   label,
   value,

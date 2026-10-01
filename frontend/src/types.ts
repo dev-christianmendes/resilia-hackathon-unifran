@@ -97,8 +97,33 @@ export interface City {
   boundary: Point[]
   regions: Region[]
   roads: Road[]
+  waterways: Waterway[]
+  vulnerability_points: VulnerabilityPoint[]
   buildings: Building[]
   trees: Tree[]
+}
+
+export interface Waterway {
+  id: string
+  name: string | null
+  kind: 'river' | 'stream' | 'canal' | 'ditch'
+  path: Point[]
+  width_m: number
+  osm_id: string | null
+  source: string
+}
+
+export interface VulnerabilityPoint {
+  id: string
+  name: string
+  kind: 'flood' | 'erosion' | 'heat' | 'infrastructure'
+  location: Point
+  severity: number
+  street: string | null
+  waterway: string | null
+  evidence: string
+  source: string
+  reference: string | null
 }
 
 export interface ScenarioParams {
@@ -268,4 +293,4 @@ export interface CopilotResponse {
   follow_up_questions: string[]
 }
 
-export type Stage = 'observe' | 'simulate' | 'mitigate'
+export type Stage = 'observe' | 'simulate' | 'mitigate' | 'compare'
