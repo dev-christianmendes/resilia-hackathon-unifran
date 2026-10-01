@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type {
   Building,
   Facility,
@@ -51,21 +52,27 @@ interface SceneProps {
 
 export function CityScene(props: SceneProps) {
   const { scenarioType } = props
+  const controls = useRef<OrbitControlsImpl>(null)
   return (
     <Canvas
       shadows
       dpr={[1, 1.75]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => props.onSelectRegion(null)}
+      onDoubleClick={() => controls.current?.reset()}
       className="h-full w-full"
     >
-      <color attach="background" args={['#f8fafc']} />
-      <fog attach="fog" args={['#f8fafc', 160, 460]} />
+      <color attach="background" args={['#07111f']} />
+      <fog attach="fog" args={['#07111f', 160, 460]} />
       <PerspectiveCamera makeDefault position={[0, 165, 205]} fov={45} near={1} far={3000} />
       <OrbitControls
+        ref={controls}
         makeDefault
         enableDamping
         dampingFactor={0.08}
+        enablePan
+        rotateSpeed={0.65}
+        zoomSpeed={0.8}
         minDistance={45}
         maxDistance={430}
         maxPolarAngle={Math.PI / 2.1}

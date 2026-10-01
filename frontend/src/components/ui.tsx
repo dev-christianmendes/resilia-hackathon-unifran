@@ -15,12 +15,12 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur ${className}`}
+      className={`rounded-2xl border border-slate-800 bg-slate-900/95 shadow-sm backdrop-blur ${className}`}
     >
       {title && (
-        <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+        <header className="flex items-start justify-between gap-3 border-b border-slate-800 px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold tracking-wide text-slate-900 uppercase">{title}</h2>
+            <h2 className="text-sm font-semibold tracking-wide text-slate-100 uppercase">{title}</h2>
             {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
           </div>
           {action}
@@ -93,7 +93,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`rounded-full px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${variants[variant]} ${className}`}
       data-testid={testId}
     >
       {children}
@@ -131,8 +131,8 @@ export function Slider({
         className="mt-1.5 w-full accent-sky-500"
       />
       <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-        <span>██████████</span>
-        <span>░░░░░░</span>
+        <span>Menos</span>
+        <span>Mais</span>
       </div>
     </div>
   )

@@ -14,8 +14,8 @@ body,
 
 body {
   margin: 0;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #07111f;
+  color: #e2e8f0;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -46,25 +46,11 @@ summary:focus-visible {
     animation-duration: 0.01ms !important;
   }
 
-  /* Keep the information hierarchy readable on the light presentation theme
-     while preserving the semantic utility classes used by the panels. */
-  [class*='bg-slate-950'],
-  [class*='bg-slate-900'] {
-    background-color: rgb(255 255 255 / 0.96);
-  }
-
-  [class*='text-slate-100'] { color: #0f172a; }
-  [class*='text-slate-200'] { color: #1e293b; }
-  [class*='text-slate-300'] { color: #334155; }
-  [class*='text-slate-400'] { color: #475569; }
-  [class*='text-slate-500'] { color: #64748b; }
-  [class*='border-slate-800'] { border-color: #e2e8f0; }
-  [class*='border-slate-700'] { border-color: #cbd5e1; }
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #334155 transparent;
 }
 
 *::-webkit-scrollbar {
@@ -73,14 +59,14 @@ summary:focus-visible {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+  background-color: #334155;
   border-radius: 9999px;
 }
 
 input[type='range'] {
   height: 4px;
   border-radius: 9999px;
-  background-color: #e2e8f0;
+  background-color: #1e293b;
   appearance: none;
   cursor: pointer;
 }
@@ -91,5 +77,16 @@ input[type='range']::-webkit-slider-thumb {
   height: 14px;
   border-radius: 9999px;
   background-color: #0284c7;
-  border: 2px solid #ffffff;
+  border: 2px solid #0f172a;
+}
+
+/* Keep legacy utility classes aligned with the dark presentation theme. */
+.bg-slate-50 { background-color: #0b1728; }
+.bg-white { background-color: #101d31; }
+.text-slate-900 { color: #f1f5f9; }
+.text-slate-500 { color: #94a3b8; }
+.border-slate-200 { border-color: #263852; }
+
+@media (max-width: 1023px) {
+  html, body, #root { min-height: 100%; }
 }

@@ -88,8 +88,8 @@ export default function App() {
 
   if (state.error && !city) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-6 text-center">
-        <h1 className="text-lg font-semibold text-slate-900">Não foi possível carregar a cidade</h1>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 px-6 text-center">
+        <h1 className="text-lg font-semibold text-slate-100">Não foi possível carregar a cidade</h1>
         <p className="max-w-md text-sm text-slate-400">{state.error}</p>
         <p className="max-w-md text-xs text-slate-500">
           Verifique se o backend está rodando em http://localhost:8000 e recarregue a página.
@@ -101,7 +101,7 @@ export default function App() {
 
   if (!city) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-400">
         Carregando Digital Twin…
       </div>
     )
@@ -118,10 +118,10 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 text-slate-900">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-2.5">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-950 px-4 py-2.5">
         <div className="flex items-center gap-3">
-          <span className="rounded-md bg-sky-500 px-2 py-1 text-xs font-black tracking-widest text-slate-950">
+          <span className="rounded-full bg-sky-400 px-2.5 py-1 text-xs font-black tracking-widest text-slate-950">
             RESILIA
           </span>
           <div>
@@ -130,11 +130,11 @@ export default function App() {
           </div>
           {showTour && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+              <div className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
                 <div className="text-xs font-bold tracking-widest text-sky-300 uppercase">
                   Guia rápido · {tourStep + 1}/3
                 </div>
-                <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                <h2 className="mt-2 text-xl font-semibold text-slate-100">
                   {['Observe antes de decidir', 'Simule um evento', 'Teste e compare soluções'][tourStep]}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-400">
@@ -192,9 +192,9 @@ export default function App() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[320px_1fr_360px]">
-        <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-slate-200 bg-slate-50 p-3">
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(360px,1fr)_auto] lg:grid-cols-[320px_1fr_360px] lg:grid-rows-1">
+        <aside className="flex min-h-0 max-h-[34vh] flex-col gap-3 overflow-y-auto border-r border-slate-800 bg-slate-950 p-3 lg:max-h-none">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 shadow-sm">
             <div className="text-[10px] font-semibold tracking-widest text-sky-300 uppercase">
               Passo {stageIndex + 1} de {STAGES.length}
             </div>
@@ -270,7 +270,7 @@ export default function App() {
           </div>
         </aside>
 
-        <main className="relative min-h-0">
+        <main className="relative min-h-[360px] min-w-0 rounded-3xl bg-slate-950">
           <CityScene
             regions={city.regions}
             boundary={city.boundary}
@@ -296,27 +296,27 @@ export default function App() {
             </div>
           )}
 
-          <div className="absolute top-3 left-3 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-lg">
+          <div className="absolute top-3 left-3 rounded-2xl border border-slate-700 bg-slate-900/95 px-3 py-2 shadow-lg">
             <div className="mb-1 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
               Nível de risco
             </div>
             <RiskLegend />
           </div>
-          <details className="absolute top-3 right-3 rounded-lg border border-slate-200 bg-white/95 shadow-lg">
+          <details className="absolute top-3 right-3 rounded-2xl border border-slate-700 bg-slate-900/95 shadow-lg">
             <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-slate-200">
               Camadas
             </summary>
-            <div className="w-56 border-t border-slate-200 p-2">
+            <div className="w-56 border-t border-slate-700 p-2">
               <LayerPanel layers={layers} onToggle={actions.toggleLayer} />
             </div>
           </details>
 
-          <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-[11px] text-slate-500">
-            Arraste para orbitar · scroll para aproximar · clique em uma região
+          <div className="pointer-events-none absolute bottom-3 left-1/2 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-full border border-slate-700 bg-slate-900/90 px-4 py-2 text-center text-[11px] text-slate-300 shadow-lg">
+            Arraste para girar · roda para zoom · clique para selecionar
           </div>
         </main>
 
-        <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto border-l border-slate-200 bg-slate-50 p-3">
+        <aside className="flex min-h-0 max-h-[30vh] flex-col gap-3 overflow-y-auto border-l border-slate-800 bg-slate-950 p-3 lg:max-h-none">
           {selectedRegion ? (
             <RegionPanel
               regions={[]}

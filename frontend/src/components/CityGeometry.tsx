@@ -158,7 +158,7 @@ export function WaterwayLabels({ waterways }: { waterways: Waterway[] }) {
             distanceFactor={120}
             style={{ pointerEvents: 'none' }}
           >
-            <span className="rounded border border-sky-300 bg-white/90 px-2 py-1 text-[10px] font-medium whitespace-nowrap text-sky-900 shadow-sm">
+            <span className="rounded-full border border-sky-400/60 bg-slate-950/90 px-2.5 py-1 text-[10px] font-medium whitespace-nowrap text-sky-200 shadow-sm">
               {waterway.name}
             </span>
           </Html>
