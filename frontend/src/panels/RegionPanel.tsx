@@ -1,6 +1,7 @@
 import type { Region, RegionResult, SimulationTotals } from '../types'
 import { FACILITY_META, RISK_COLORS, RISK_LABELS, formatPercent } from '../lib/theme'
-import { Panel } from '../components/ui'
+import { Button, Panel, RiskBadge } from '../components/ui'
+import { useMemo, useState } from 'react'
 
 function toneFor(region: Region, result: RegionResult | null) {
   if (result) return result.risk_level
@@ -24,13 +25,32 @@ export function RegionPanel({
   totals: SimulationTotals | null
   onSelectRegion: (id: string) => void
 }) {
+  const [query, setQuery] = useState('')
+  const [showAll, setShowAll] = useState(false)
+  const ranked = useMemo(
+    () =>
+      [...regions]
+        .sort((a, b) => (results[b.id]?.risk ?? b.metrics.flood_risk) - (results[a.id]?.risk ?? a.metrics.flood_risk))
+        .filter((region) => friendlyName(region.name).toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR'))),
+    [query, regions, results],
+  )
+  const visible = showAll ? ranked : ranked.slice(0, 5)
+
   return (
     <Panel
-      title="Regiões"
-      subtitle={selected ? 'Clique em outro polígono para comparar' : 'Selecione uma região na cidade'}
+      title="Mais críticas"
+      subtitle={selected ? 'Selecione outra região para comparar' : 'Comece por uma área no topo da lista'}
     >
-      <ul className="mb-3 grid grid-cols-2 gap-1.5">
-        {regions.map((region) => {
+      <div className="mb-3 space-y-2">
+        <input
+          aria-label="Buscar região"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Buscar região..."
+          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-400"
+        />
+        <ul className="space-y-1.5">
+        {visible.map((region, index) => {
           const active = region.id === selected?.id
           const regionResult = results[region.id] ?? null
           const tone = toneFor(region, regionResult)
@@ -46,27 +66,43 @@ export function RegionPanel({
                     : 'border-slate-800 text-slate-300 hover:border-slate-600'
                 }`}
               >
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: RISK_COLORS[tone] }}
-                  />
-                  <span className="truncate font-medium">{region.name}</span>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-500">{index + 1}</span>
+                    <span className="truncate font-medium">{friendlyName(region.name)}</span>
+                  </span>
+                  <RiskBadge level={tone} />
                 </span>
                 {regionResult && (
                   <span className="mt-0.5 block text-[10px] text-slate-500">
-                    {regionResult.affected_population.toLocaleString('pt-BR')} afetados
+                    {reasonFor(region, regionResult)}
                   </span>
                 )}
               </button>
             </li>
           )
         })}
-      </ul>
+        </ul>
+        <Button variant="ghost" className="w-full text-xs" onClick={() => setShowAll((value) => !value)}>
+          {showAll ? 'Mostrar só as 5 principais' : `Ver todas (${ranked.length})`}
+        </Button>
+      </div>
 
       {selected ? <RegionDetail region={selected} result={result} totals={totals} /> : null}
     </Panel>
   )
+}
+
+function friendlyName(name: string): string {
+  const base = name.replace(/\s+\(\d+\)$/, '')
+  return base === "Curso d'água sem nome" ? 'Curso sem nome' : base
+}
+
+function reasonFor(region: Region, result: RegionResult): string {
+  if (result.compromised_roads > 0) return `${result.compromised_roads} vias podem ficar bloqueadas`
+  if (region.metrics.impermeability >= 0.6) return 'alta impermeabilização do solo'
+  if (region.metrics.vulnerability >= 0.6) return 'maior vulnerabilidade social'
+  return `${result.affected_population.toLocaleString('pt-BR')} pessoas expostas`
 }
 
 function RegionDetail({

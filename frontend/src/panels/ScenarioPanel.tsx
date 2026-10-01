@@ -36,7 +36,7 @@ export function ScenarioPanel({
       action={<span className="text-[10px] text-slate-500">{SCENARIO_META[scenario.type].icon}</span>}
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           {SCENARIOS.map((type) => {
             const meta = SCENARIO_META[type]
             const active = scenario.type === type
@@ -51,8 +51,8 @@ export function ScenarioPanel({
                     : 'border-slate-800 hover:border-slate-600'
                 }`}
               >
-                <span className="block text-sm font-semibold text-slate-100">
-                  {meta.icon} {meta.label}
+                <span className="block text-base font-semibold text-slate-100">
+                <span aria-hidden="true">{meta.icon}</span> {meta.label}
                 </span>
                 <span className="mt-0.5 block text-[11px] leading-snug text-slate-400">
                   {meta.description}
@@ -63,8 +63,10 @@ export function ScenarioPanel({
         </div>
 
         <div className="space-y-3">
-          <Slider label="Intensidade" value={scenario.intensity} onChange={onIntensity} />
-          <Slider label="Duração" value={scenario.duration} onChange={onDuration} />
+          <Slider label="Intensidade do evento" value={scenario.intensity} onChange={onIntensity} />
+          <div className="-mt-2 text-[11px] text-slate-500">{scaleLabel(scenario.intensity)} · valor do modelo {Math.round(scenario.intensity * 100)}%</div>
+          <Slider label="Duração do evento" value={scenario.duration} onChange={onDuration} />
+          <div className="-mt-2 text-[11px] text-slate-500">{scaleLabel(scenario.duration)} · duração relativa</div>
         </div>
 
         <Button onClick={onSimulate} disabled={busy} className="w-full">
@@ -79,6 +81,11 @@ export function ScenarioPanel({
 
         {result && (
           <>
+            <p className="rounded-lg border border-sky-800/70 bg-sky-950/40 px-3 py-2 text-sm leading-relaxed text-sky-100">
+              Com {SCENARIO_META[scenario.type].label.toLocaleLowerCase('pt-BR')} a {Math.round(scenario.intensity * 100)}%,{' '}
+              {result.totals.compromised_roads} vias podem ficar bloqueadas e{' '}
+              {result.totals.critical_facilities_affected} equipamentos críticos podem ser afetados.
+            </p>
             <RiskLegend />
             <div className="grid grid-cols-2 gap-2">
               <Stat
@@ -122,4 +129,11 @@ export function ScenarioPanel({
       </div>
     </Panel>
   )
+}
+
+function scaleLabel(value: number): string {
+  if (value < 0.25) return 'Fraca'
+  if (value < 0.5) return 'Moderada'
+  if (value < 0.75) return 'Forte'
+  return 'Extrema'
 }

@@ -122,6 +122,7 @@ export function Slider({
         </span>
       </div>
       <input
+        aria-label={label}
         type="range"
         min={0}
         max={100}
