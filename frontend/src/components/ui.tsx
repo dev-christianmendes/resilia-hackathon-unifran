@@ -140,12 +140,12 @@ export function Slider({
 
 export function RiskLegend() {
   const items = [
-    { color: '#ef4444', label: 'Alto' },
-    { color: '#f59e0b', label: 'Moderado' },
-    { color: '#22c55e', label: 'Baixo' },
+    { color: '#ef4444', label: 'Alto · 62–100%' },
+    { color: '#f59e0b', label: 'Moderado · 34–61%' },
+    { color: '#22c55e', label: 'Baixo · 0–33%' },
   ]
   return (
-    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300">
+    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-200">
       {items.map((item) => (
         <span key={item.label} className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />

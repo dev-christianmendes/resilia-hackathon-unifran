@@ -17,6 +17,8 @@ export function RegionPanel({
   results,
   totals,
   onSelectRegion,
+  showRanking = true,
+  showDetail = true,
 }: {
   regions: Region[]
   selected: Region | null
@@ -24,6 +26,8 @@ export function RegionPanel({
   results: Record<string, RegionResult>
   totals: SimulationTotals | null
   onSelectRegion: (id: string) => void
+  showRanking?: boolean
+  showDetail?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
@@ -37,10 +41,8 @@ export function RegionPanel({
   const visible = showAll ? ranked : ranked.slice(0, 5)
 
   return (
-    <Panel
-      title="Mais críticas"
-      subtitle={selected ? 'Selecione outra região para comparar' : 'Comece por uma área no topo da lista'}
-    >
+    <Panel title={showRanking ? 'Mais críticas' : undefined} subtitle={showRanking ? 'Comece pelo maior risco' : undefined}>
+      {showRanking && (
       <div className="mb-3 space-y-2">
         <input
           aria-label="Buscar região"
@@ -69,7 +71,7 @@ export function RegionPanel({
                 <span className="flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="text-[10px] font-bold text-slate-500">{index + 1}</span>
-                    <span className="truncate font-medium">{friendlyName(region.name)}</span>
+                    <span className="truncate font-medium">{displayName(region, regions)}</span>
                   </span>
                   <RiskBadge level={tone} />
                 </span>
@@ -87,8 +89,9 @@ export function RegionPanel({
           {showAll ? 'Mostrar só as 5 principais' : `Ver todas (${ranked.length})`}
         </Button>
       </div>
+      )}
 
-      {selected ? <RegionDetail region={selected} result={result} totals={totals} /> : null}
+      {showDetail && selected ? <RegionDetail region={selected} result={result} totals={totals} /> : null}
     </Panel>
   )
 }
@@ -96,6 +99,13 @@ export function RegionPanel({
 function friendlyName(name: string): string {
   const base = name.replace(/\s+\(\d+\)$/, '')
   return base === "Curso d'água sem nome" ? 'Curso sem nome' : base
+}
+
+function displayName(region: Region, regions: Region[]): string {
+  const name = friendlyName(region.name)
+  const duplicates = regions.filter((item) => friendlyName(item.name) === name)
+  if (duplicates.length <= 1) return name
+  return `${name} · Área ${region.id.replace('region-', '')}`
 }
 
 function reasonFor(region: Region, result: RegionResult): string {
@@ -121,6 +131,11 @@ function RegionDetail({
     <div className="space-y-3 border-t border-slate-800 pt-3">
       <header>
         <h3 className="text-base font-semibold text-slate-100">{region.name}</h3>
+        <p className="mt-1 text-xs text-slate-300">
+          {result
+            ? `Risco ${RISK_LABELS[tone].toLocaleLowerCase('pt-BR')} (${Math.round(result.risk * 100)}%). ${m.population.toLocaleString('pt-BR')} moradores.`
+            : `${m.population.toLocaleString('pt-BR')} moradores estimados nesta região.`}
+        </p>
         <div className="mt-1 flex items-center gap-2">
           <span
             className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-slate-950"
@@ -134,7 +149,9 @@ function RegionDetail({
         </div>
       </header>
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+      <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+        <summary className="cursor-pointer text-xs font-semibold text-slate-300">Ver detalhes técnicos</summary>
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
         <Row label="População estimada" value={m.population.toLocaleString('pt-BR')} />
         <Row label="Densidade" value={`${m.population_density.toLocaleString('pt-BR')} hab/km²`} />
         <Row label="Cobertura vegetal" value={formatPercent(m.vegetation_index)} />
@@ -156,6 +173,7 @@ function RegionDetail({
           hint="Estimativa de quantas pessoas podem ter mais dificuldade para se proteger ou se recuperar."
         />
       </dl>
+      </details>
 
       <div>
         <h4 className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">

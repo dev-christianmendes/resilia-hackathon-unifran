@@ -59,7 +59,6 @@ export function CityScene(props: SceneProps) {
       dpr={[1, 1.75]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => props.onSelectRegion(null)}
-      onDoubleClick={() => controls.current?.reset()}
       className="h-full w-full"
     >
       <color attach="background" args={['#07111f']} />
@@ -273,7 +272,7 @@ function CityContents({
               className="cursor-pointer"
             >
               <RegionLabel
-                name={friendlyRegionName(region.name)}
+                name={displayRegionName(region, regions)}
                 result={resultByRegion[region.id] ?? null}
                 selected={region.id === selectedRegionId}
               />
@@ -322,8 +321,13 @@ function labelRegions(
     (a, b) => (results[b.id]?.risk ?? 0) - (results[a.id]?.risk ?? 0),
   )
   const labels: Region[] = []
-  for (const region of ranked) {
-    if (region.id !== selectedId && region.id !== hoveredId && labels.length >= 7) continue
+  const candidates = [
+    ...regions.filter((region) => region.id === selectedId || region.id === hoveredId),
+    ...ranked,
+  ]
+  for (const region of candidates) {
+    if (labels.some((item) => item.id === region.id)) continue
+    if (region.id !== selectedId && region.id !== hoveredId && labels.length >= 5) continue
     const overlaps = labels.some(
       (other) => Math.hypot(region.centroid.x - other.centroid.x, region.centroid.y - other.centroid.y) < 180,
     )
@@ -336,4 +340,11 @@ function labelRegions(
 function friendlyRegionName(name: string): string {
   const base = name.replace(/\s+\(\d+\)$/, '')
   return base === "Curso d'água sem nome" ? 'Curso sem nome' : base
+}
+
+function displayRegionName(region: Region, regions: Region[]): string {
+  const name = friendlyRegionName(region.name)
+  const duplicates = regions.filter((item) => friendlyRegionName(item.name) === name)
+  if (duplicates.length <= 1) return name
+  return `${name} · Área ${region.id.replace('region-', '')}`
 }

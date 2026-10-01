@@ -6,10 +6,10 @@ import { METERS_TO_UNITS, elevationToHeight } from '../lib/geo'
 const REGION_BASE = METERS_TO_UNITS * 40
 
 const USE_COLORS: Record<Building['use'], string> = {
-  residential: '#94a3b8',
-  commercial: '#64748b',
-  industrial: '#475569',
-  public: '#7dd3fc',
+  residential: '#64748b',
+  commercial: '#718096',
+  industrial: '#4b5563',
+  public: '#94a3b8',
 }
 
 export function Buildings({

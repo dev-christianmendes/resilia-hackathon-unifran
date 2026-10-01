@@ -97,7 +97,9 @@ export function Terrain({
               <meshStandardMaterial
                 color={fill}
                 transparent
-                opacity={showRisk || showCriticalAreas ? 0.65 : 0.32}
+                opacity={
+                  selectedRegionId && !selected ? 0.16 : showRisk || showCriticalAreas ? 0.78 : 0.32
+                }
                 roughness={0.85}
                 metalness={0.05}
                 emissive={selected ? fill : '#000000'}
