@@ -39,6 +39,8 @@ export default function App() {
     costs,
   } = twin
   const [catalogue, setCatalogue] = useState<InterventionCatalogueItem[]>([])
+  const [showTour, setShowTour] = useState(() => localStorage.getItem('resilia-tour-seen') !== '1')
+  const [tourStep, setTourStep] = useState(0)
 
   useEffect(() => {
     void api
@@ -126,6 +128,46 @@ export default function App() {
             <h1 className="text-sm leading-tight font-semibold">CITY TWIN</h1>
             <p className="text-[11px] text-slate-400">{city.name} · Digital Twin urbano</p>
           </div>
+          {showTour && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+                <div className="text-xs font-bold tracking-widest text-sky-300 uppercase">
+                  Guia rápido · {tourStep + 1}/3
+                </div>
+                <h2 className="mt-2 text-xl font-semibold text-slate-100">
+                  {['Observe antes de decidir', 'Simule um evento', 'Teste e compare soluções'][tourStep]}
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                  {[
+                    'Clique em uma região ou escolha uma das áreas mais críticas para entender o território.',
+                    'Escolha chuva extrema ou onda de calor e ajuste a intensidade para ver o risco mudar.',
+                    'Adicione uma intervenção, rode novamente e compare o antes e depois.',
+                  ][tourStep]}
+                </p>
+                <div className="mt-5 flex justify-between gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      localStorage.setItem('resilia-tour-seen', '1')
+                      setShowTour(false)
+                    }}
+                  >
+                    Pular
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (tourStep === 2) {
+                        localStorage.setItem('resilia-tour-seen', '1')
+                        setShowTour(false)
+                      } else setTourStep((step) => step + 1)
+                    }}
+                  >
+                    {tourStep === 2 ? 'Começar' : 'Próximo'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <Stepper
@@ -135,12 +177,22 @@ export default function App() {
           onChange={(id) => actions.setStage(id as Stage)}
         />
 
-        <Button variant="ghost" onClick={actions.reset}>
-          Reiniciar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={() => { setTourStep(0); setShowTour(true) }}>
+            Tutorial
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              if (window.confirm('Limpar a simulação e as intervenções?')) actions.reset()
+            }}
+          >
+            Reiniciar
+          </Button>
+        </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr_360px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[320px_1fr_360px]">
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-slate-800 p-3">
           <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
             <div className="text-[10px] font-semibold tracking-widest text-sky-300 uppercase">
@@ -250,6 +302,14 @@ export default function App() {
             </div>
             <RiskLegend />
           </div>
+          <details className="absolute top-3 right-3 rounded-lg border border-slate-700 bg-slate-950/90 shadow-lg">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-slate-200">
+              Camadas
+            </summary>
+            <div className="w-56 border-t border-slate-800 p-2">
+              <LayerPanel layers={layers} onToggle={actions.toggleLayer} />
+            </div>
+          </details>
 
           <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-[11px] text-slate-400">
             Arraste para orbitar · scroll para aproximar · clique em uma região
@@ -280,7 +340,6 @@ export default function App() {
               disabled={!state.current}
             />
           )}
-          {stage !== 'compare' && <LayerPanel layers={layers} onToggle={actions.toggleLayer} />}
         </aside>
       </div>
     </div>

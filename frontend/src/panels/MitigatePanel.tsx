@@ -70,6 +70,7 @@ export function MitigatePanel({
 
   function handlePlace() {
     if (!activeRegion) return
+    if (spentBrl !== null && !withinBudget) return
     onStartPlacement({
       id: `pending-${type}-${Date.now()}`,
       type,
@@ -284,9 +285,21 @@ export function MitigatePanel({
             Cancelar posicionamento
           </Button>
         ) : (
-          <Button variant="success" onClick={handlePlace} className="w-full">
-            + Adicionar intervenção
+          <Button
+            variant="success"
+            onClick={handlePlace}
+            disabled={spentBrl !== null && !withinBudget}
+            className="w-full"
+          >
+            {spentBrl !== null && !withinBudget ? 'Orçamento esgotado' : '+ Adicionar intervenção'}
           </Button>
+        )}
+
+        {spentBrl !== null && !withinBudget && (
+          <p className="rounded-lg border border-red-800 bg-red-950/40 px-3 py-2 text-[11px] text-red-200">
+            Esta configuração ultrapassa o orçamento. Remova uma intervenção ou aumente o limite
+            antes de adicionar outra.
+          </p>
         )}
 
         {placement && (

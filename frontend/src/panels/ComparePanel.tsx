@@ -1,8 +1,11 @@
 import type { SimulationComparison } from '../types'
 import { formatNumber, formatSigned } from '../lib/theme'
 import { Panel } from '../components/ui'
+import { useState } from 'react'
 
 export function ComparePanel({ comparison }: { comparison: SimulationComparison | null }) {
+  const [position, setPosition] = useState(50)
+
   if (!comparison) {
     return (
       <Panel title="Comparação" subtitle="Antes e depois da intervenção">
@@ -58,6 +61,36 @@ export function ComparePanel({ comparison }: { comparison: SimulationComparison 
       }
     >
       <div className="space-y-3">
+        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+          <div className="flex items-baseline justify-between">
+            <span className="text-xs font-semibold text-slate-200">Efeito geral</span>
+            <span className="text-lg font-bold text-emerald-300">
+              {delta.affected_population_pct.toFixed(0)}% menos pessoas afetadas
+            </span>
+          </div>
+          <label className="mt-3 block text-[11px] text-slate-400">
+            Deslize para comparar antes e depois
+            <input
+              aria-label="Posição da comparação antes e depois"
+              type="range"
+              min={0}
+              max={100}
+              value={position}
+              onChange={(event) => setPosition(Number(event.target.value))}
+              className="mt-2 w-full accent-emerald-500"
+            />
+          </label>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-center">
+            <div className={`rounded-md px-2 py-2 ${position < 50 ? 'bg-slate-700' : 'bg-slate-800/60'}`}>
+              <div className="text-[10px] text-slate-400">ANTES</div>
+              <div className="text-lg font-bold text-slate-100">{formatNumber(baseline.affected_population)}</div>
+            </div>
+            <div className={`rounded-md px-2 py-2 ${position >= 50 ? 'bg-emerald-950/60' : 'bg-slate-800/60'}`}>
+              <div className="text-[10px] text-emerald-300">DEPOIS</div>
+              <div className="text-lg font-bold text-emerald-200">{formatNumber(mitigated.affected_population)}</div>
+            </div>
+          </div>
+        </div>
         <div className="space-y-2">
           {rows.map((row) => (
             <div key={row.label}>
@@ -79,9 +112,10 @@ export function ComparePanel({ comparison }: { comparison: SimulationComparison 
         </div>
 
         <div>
-          <h4 className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-            Por região
-          </h4>
+          <details>
+            <summary className="cursor-pointer text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+              Ver detalhes por região
+            </summary>
           <ul className="mt-1.5 space-y-1">
             {per_region.map((row) => (
               <li
@@ -105,8 +139,13 @@ export function ComparePanel({ comparison }: { comparison: SimulationComparison 
               </li>
             ))}
           </ul>
+          </details>
         </div>
 
+        <p className="rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[11px] leading-relaxed text-amber-100">
+          O efeito pode transbordar para regiões vizinhas: uma rota alternativa ou um reservatório
+          também ajuda áreas conectadas pela mesma rede.
+        </p>
         <p className="text-[11px] leading-relaxed text-slate-500">
           Os números acima são estimativas produzidas pelo modelo de simulação da POC e não
           constituem previsão operacional.
