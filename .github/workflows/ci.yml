@@ -14,6 +14,16 @@ permissions:
   contents: read
 
 jobs:
+  workflows:
+    # Sem este job o GitHub só reporta "workflow file issue" quando o arquivo
+    # é inválido, sem apontar a linha. O actionlint roda antes de tudo.
+    name: Workflows (actionlint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Valida os arquivos de workflow
+        uses: docker://rhysd/actionlint:1.7.7
+
   backend:
     name: Backend (lint, tipos, testes)
     runs-on: ubuntu-latest

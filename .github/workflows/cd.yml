@@ -12,8 +12,6 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
 
 permissions:
   contents: read
@@ -28,10 +26,10 @@ jobs:
       matrix:
         include:
           - service: backend
-            image: ${{ env.BACKEND_IMAGE }}
+            image: ghcr.io/${{ github.repository }}/backend
             context: ./backend
           - service: frontend
-            image: ${{ env.FRONTEND_IMAGE }}
+            image: ghcr.io/${{ github.repository }}/frontend
             context: ./frontend
     steps:
       - uses: actions/checkout@v4
