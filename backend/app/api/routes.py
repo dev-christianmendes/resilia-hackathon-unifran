@@ -70,7 +70,7 @@ def run(payload: RunRequest) -> RunResponse:
         scenario=payload.scenario,
         baseline=baseline,
         mitigated=mitigated,
-        comparison=compare(city_model, payload.scenario, interventions),
+        comparison=compare(city_model, payload.scenario, interventions, baseline),
         total_cost_brl=total_cost,
         budget_brl=payload.budget_brl,
         within_budget=payload.budget_brl is None or total_cost <= payload.budget_brl,

@@ -398,8 +398,16 @@ def compare(
     city: CityModel,
     scenario: ScenarioParams,
     interventions: list[Intervention],
+    baseline: SimulationResult | None = None,
 ) -> SimulationComparison:
-    baseline = run_simulation(city, scenario, [], "baseline")
+    """Baseline against mitigated.
+
+    ``baseline`` may be passed when the caller already has it. The baseline is
+    independent of the interventions, so recomputing it just burns CPU and risks
+    a different result appearing on either side of the comparison.
+    """
+    if baseline is None:
+        baseline = run_simulation(city, scenario, [], "baseline")
     mitigated = run_simulation(city, scenario, interventions, "mitigated")
 
     base_by_region = {r.region_id: r for r in baseline.regions}

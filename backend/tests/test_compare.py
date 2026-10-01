@@ -1,8 +1,9 @@
 from conftest import intervention, scenario_rain
 
 from app.data import get_city
+from app.engine.interventions import normalize
 from app.engine.simulation import compare, run_simulation
-from app.schemas import InterventionType
+from app.schemas import Intervention, InterventionType, ScenarioParams, ScenarioType
 
 
 def riskiest_region_id() -> str:
@@ -45,3 +46,36 @@ def test_stronger_intervention_yields_better_outcome():
     weak = compare(city, scenario, [intervention(InterventionType.RESERVOIR, target, 0.3)])
     strong = compare(city, scenario, [intervention(InterventionType.RESERVOIR, target, 1.0)])
     assert strong.mitigated.affected_population < weak.mitigated.affected_population
+
+
+def test_comparison_reuses_a_baseline_it_was_given():
+    """A caller holding the baseline should not pay for it twice."""
+    city = get_city()
+    scenario = ScenarioParams(type=ScenarioType.EXTREME_RAIN, intensity=0.8, duration=0.6)
+    baseline = run_simulation(city, scenario, [], "baseline")
+
+    reused = compare(city, scenario, [], baseline)
+    fresh = compare(city, scenario, [])
+
+    assert reused.baseline == fresh.baseline == baseline.totals
+    assert reused.delta == fresh.delta
+
+
+def test_reused_and_fresh_comparisons_agree():
+    city = get_city()
+    scenario = ScenarioParams(type=ScenarioType.HEAT_WAVE, intensity=0.7, duration=0.5)
+    intervention = normalize(
+        Intervention(
+            id="int-1",
+            type=InterventionType.GREEN_AREA,
+            region_id=city.regions[0].id,
+            location=city.regions[0].centroid,
+            impact_factor=0.75,
+            cost_brl=1_000_000,
+        )
+    )
+    baseline = run_simulation(city, scenario, [], "baseline")
+    assert (
+        compare(city, scenario, [intervention], baseline).delta
+        == compare(city, scenario, [intervention]).delta
+    )

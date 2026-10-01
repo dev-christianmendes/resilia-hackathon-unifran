@@ -184,12 +184,13 @@ def _expected_effect(
     )
     trial_interventions = [*result.interventions, candidate]
     diff = compare(city, scenario, trial_interventions)
-    trial = run_simulation(city, scenario, trial_interventions, "mitigated")
     return {
         "affected_population_delta": int(diff.delta.affected_population),
         "affected_population_delta_pct": diff.delta.affected_population_pct,
         "compromised_roads_delta": int(diff.delta.compromised_roads),
-        "region_risk_after": max(r.risk for r in trial.regions if r.region_id == region_id),
+        "region_risk_after": next(
+            row["risk_after"] for row in diff.per_region if row["region_id"] == region_id
+        ),
         "basis": (
             f"projeção do motor para {INTERVENTION_LABELS[intervention_type]} "
             f"(fator {DEFAULTS[intervention_type]:.2f}) em {region.name}"
