@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancela execuções anteriores do mesmo ref quando chega um push novo.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint, tipos, testes)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Tipos
+        run: mypy --explicit-package-bases app
+      - name: Testes
+        run: python -m pytest -q --junitxml=junit.xml
+      - name: Confere que os fixtures versionados estão presentes
+        # A API lê apenas fixtures; sem eles os testes que constroem a cidade real
+        # falham de forma confusa num checkout novo.
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+
+          fixtures = Path("app/data/fixtures/franca")
+          required = [
+              "boundary.json",
+              "waterways.json",
+              "roads.json",
+              "buildings.json",
+              "landuse.json",
+              "facilities.json",
+              "elevation.json",
+              "vulnerability_points.json",
+              "metadata.json",
+              "SOURCES.md",
+          ]
+          missing = [name for name in required if not (fixtures / name).exists()]
+          if missing:
+              sys.exit(f"fixtures ausentes: {', '.join(missing)}")
+          print(f"{len(required)} fixtures presentes")
+          PY
+      - name: Constrói a cidade real a partir dos fixtures
+        run: |
+          python - <<'PY'
+          from app.data import get_city
+
+          city = get_city()
+          population = sum(r.metrics.population for r in city.regions)
+          print(f"{len(city.regions)} sub-bacias, {len(city.roads)} vias, populacao {population}")
+          assert city.regions, "nenhuma regiao construida"
+          assert population == 365_494, f"populacao inesperada: {population}"
+          PY
+      - name: Publica relatório de testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-backend
+          path: backend/junit.xml
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend (tipos, lint, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Tipos
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  docker:
+    name: Docker (build das imagens)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build imagens
+        run: docker compose build
+
+  commits:
+    name: Conventional commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Valida mensagens de commit
+        run: |
+          npm install --no-save @commitlint/cli @commitlint/config-conventional
+          npx commitlint \
+            --from "$(git merge-base HEAD origin/${{ github.base_ref }})" \
+            --to HEAD \
+            --verbose

@@ -1,0 +1,139 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    name: Publica imagens no GHCR
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            image: ${{ env.BACKEND_IMAGE }}
+            context: ./backend
+          - service: frontend
+            image: ${{ env.FRONTEND_IMAGE }}
+            context: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Autentica no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Meta e tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=sha,prefix=
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build e publica
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  smoke:
+    name: Smoke test da stack publicada
+    runs-on: ubuntu-latest
+    needs: images
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Autentica no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Sobe as imagens recém-publicadas, com o override que troca `build` por
+      # `image`, para exercitar no smoke test o que está de fato no registry.
+      - name: Puxa as imagens publicadas
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml pull
+
+      - name: Sobe a stack publicada
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml \
+            up -d --no-build --wait --wait-timeout 180 \
+            backend frontend \
+            || {
+              echo "--- logs do backend ---"
+              docker compose -f docker-compose.yml -f docker-compose.ci.yml logs backend || true
+              echo "--- logs do frontend ---"
+              docker compose -f docker-compose.yml -f docker-compose.ci.yml logs frontend || true
+              exit 1
+            }
+
+      - name: Verifica health da API
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health > /dev/null; then
+              echo "backend saudável"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "backend nao respondeu /api/health"
+          docker compose logs backend || true
+          exit 1
+
+      - name: Confere que a API serve a cidade real
+        run: |
+          curl -fsS http://127.0.0.1:8000/api/city > /tmp/city.json
+          python - <<'PY'
+          import json
+
+          with open("/tmp/city.json", encoding="utf-8") as handle:
+              city = json.load(handle)
+
+          assert city["regions"], "sem regioes"
+          assert city["elevation"]["values"], "sem DEM"
+          assert city["vulnerability_points"], "sem pontos vulneraveis"
+          assert city["sources"], "sem proveniencia"
+          population = sum(r["metrics"]["population"] for r in city["regions"])
+          assert population == 365_494, population
+          print(f"{len(city['regions'])} sub-bacias, populacao {population}")
+          PY
+
+      - name: Verifica que o frontend serve
+        run: |
+          curl -fsS http://127.0.0.1:8080/ | grep -qi '<div id="root">'
+          echo "frontend servindo"
+
+      - name: Derruba a stack
+        if: always()
+        run: docker compose down -v

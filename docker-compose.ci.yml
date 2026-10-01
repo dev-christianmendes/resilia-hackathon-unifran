@@ -1,0 +1,12 @@
+# Usado pelo workflow de CD para subir exatamente as imagens publicadas no GHCR.
+# `build` continua declarado no compose base de propósito: o CD faz `pull` e sobe
+# com `--no-build`, então o que roda em produção é a imagem do registry.
+#
+# Sobrescreva os valores com variáveis de ambiente se publicar em outro registry:
+#   IMAGE_BACKEND=... IMAGE_FRONTEND=... docker compose -f docker-compose.yml -f docker-compose.ci.yml up
+services:
+  backend:
+    image: ${IMAGE_BACKEND:-ghcr.io/dev-christianmendes/resilia-hackathon-unifran/backend:latest}
+
+  frontend:
+    image: ${IMAGE_FRONTEND:-ghcr.io/dev-christianmendes/resilia-hackathon-unifran/frontend:latest}
