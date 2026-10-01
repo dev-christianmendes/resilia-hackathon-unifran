@@ -1,52 +1,57 @@
 # CITY TWIN — RESILIA
 
-Digital twin urbano para resiliência ao El Niño. Observar a cidade, simular eventos
-climáticos extremos, testar intervenções de infraestrutura e comparar o antes e o depois.
+Digital twin urbano para explorar a resiliência de Franca/SP diante de chuva extrema e onda de calor. A POC permite observar o território, simular um evento, testar intervenções e comparar estimativas antes/depois.
 
-> Os números são **estimativas produzidas pelo motor de simulação da POC**. Não são previsões
-> operacionais nem substituem dados oficiais de defesa civil ou saneamento.
+> **Importante:** todos os números são estimativas do modelo da POC. Não são previsões operacionais e não substituem dados oficiais, estudos hidráulicos, dimensionamento de obras ou decisões da Defesa Civil.
 
-## O que a POC faz
+## Visão rápida
 
-- **Digital twin 3D** de uma cidade sintética determinística (6 regiões, malha viária,
-  edificações, vegetação e equipamentos públicos) em React Three Fiber.
-- **Cenários** de chuva extrema e onda de calor, com intensidade e duração ajustáveis.
-- **Riscos** por região: população afetada, vias comprometidas, equipamentos críticos,
-  susceptibilidade do terreno, impermeabilidade, cobertura vegetal e vulnerabilidade social.
-- **Intervenções**: reservatório, abrigo, rota alternativa e ponto de atendimento, com fator
-  de impacto ajustável por intervenção.
-- **Comparação antes/depois** com deltas absolutos e percentuais, totais e por região,
-  incluindo o efeito de transbordo entre regiões vizinhas.
-- **Urban Copilot** que recebe o cenário simulado e devolve região priorizada, fatores de
-  maior peso, intervenção sugerida e o efeito estimado — com heurística offline opcionalmente
-  substituída por um LLM compatível com a API da OpenAI.
+O produto é um monorepo com:
 
-Fluxo de trabalho na tela: `OBSERVE → SIMULATE → MITIGATE`.
+- **Frontend:** mapa 3D interativo, fluxo guiado em quatro etapas, seleção de regiões, risco territorial, mitigação, comparação e Urban Copilot.
+- **Backend:** API FastAPI com dados geoespaciais de Franca, motor determinístico de simulação, catálogo de intervenções, otimização por orçamento e Copilot heurístico/LLM opcional.
+- **Dados:** fixtures versionadas em `backend/app/data/fixtures/franca/`, carregadas em memória. Não há banco de dados ou persistência de cenários.
+
+Fluxo da interface: **Observar → Simular → Mitigar → Comparar**.
 
 ## Stack
 
 | Camada | Tecnologias |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, React Three Fiber, drei, three |
+| Frontend | React 19, TypeScript estrito, Vite, Tailwind CSS 4, React Three Fiber, drei, three |
 | Backend | Python 3.10+, FastAPI, Pydantic v2, Uvicorn |
-| Dados | Cidade sintética determinística em memória (seed `20240517`) |
-| Testes | pytest, ruff, mypy, oxlint, tsc, Playwright (verificação manual do fluxo) |
+| Qualidade | pytest, pytest-asyncio, ruff, mypy, oxlint, TypeScript |
+| Deploy local | Docker Compose, Nginx para servir o frontend |
 
-O banco de dados é intencionalmente adiado: a POC carrega a cidade inteira em memória.
-Trocar `backend/app/data/city.py` por consultas PostGIS é o próximo passo natural.
+## Requisitos
 
-## Rodando localmente
+- Node.js compatível com o Vite atual e npm.
+- Python 3.10 ou superior.
+- Docker e Docker Compose apenas para execução conteinerizada.
 
-Backend (porta 8000):
+## Executar localmente
+
+### 1. Backend
 
 ```bash
 cd backend
-python -m venv .venv
-.venv/bin/pip install -e '.[dev]'
-.venv/bin/uvicorn app.main:app --reload --port 8000
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Frontend (porta 5173, com proxy para `/api`):
+Verifique a API:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+# {"status":"ok"}
+```
+
+A documentação interativa fica em <http://127.0.0.1:8000/docs>.
+
+### 2. Frontend
+
+Em outro terminal:
 
 ```bash
 cd frontend
@@ -54,112 +59,136 @@ npm ci
 npm run dev
 ```
 
-Acesse <http://localhost:5173>. Se o backend não estiver na porta 8000, aponte o proxy:
+Acesse <http://localhost:5173>. O proxy do Vite envia `/api` para `http://localhost:8000`.
+
+Para usar outra porta ou host:
 
 ```bash
-VITE_API_PROXY=http://127.0.0.1:8765 npm run dev
+VITE_API_PROXY=http://127.0.0.1:8010 npm run dev
 ```
 
-Documentação interativa da API: <http://localhost:8000/docs>.
-
-### Com Docker
+### Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-- App: <http://localhost:8080>
-- API: <http://localhost:8000> (docs em `/docs`)
+| Serviço | URL |
+| --- | --- |
+| Aplicação | <http://localhost:8080> |
+| API | <http://localhost:8000> |
+| Swagger | <http://localhost:8000/docs> |
 
-## Urban Copilot
+O frontend aguarda o healthcheck do backend antes de iniciar.
 
-Sem configuração, o Copilot roda em modo **heurístico** e totalmente offline. Para usar um
-modelo compatível com a API da OpenAI, exporte as variáveis antes de subir o backend:
+## Configuração
 
-```bash
-export URBAN_COPILOT_API_KEY=sk-...
-export URBAN_COPILOT_BASE_URL=https://api.openai.com/v1
-export URBAN_COPILOT_MODEL=gpt-4o-mini
-```
+Copie `backend/.env.example` para `backend/.env` quando precisar personalizar o ambiente. O backend carrega esse arquivo via `python-dotenv`.
 
-Se qualquer uma faltar ou a chamada falhar, o backend registra o erro e devolve a análise
-heurística — a POC nunca fica sem resposta.
-
-## Variáveis de ambiente
-
-| Variável | Padrão | Uso |
+| Variável | Padrão | Descrição |
 | --- | --- | --- |
-| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Origens liberadas no CORS |
-| `URBAN_COPILOT_API_KEY` | vazio | Chave da API do LLM |
-| `URBAN_COPILOT_BASE_URL` | vazio | Base URL compatível com OpenAI |
-| `URBAN_COPILOT_MODEL` | vazio | Identificador do modelo |
-| `VITE_API_PROXY` | `http://localhost:8000` | Backend usado pelo proxy do Vite |
+| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Origens permitidas pelo backend, separadas por vírgula |
+| `URBAN_COPILOT_API_KEY` | vazio | Chave opcional de um provedor compatível com a API da OpenAI |
+| `URBAN_COPILOT_BASE_URL` | vazio | Base URL do provedor LLM |
+| `URBAN_COPILOT_MODEL` | vazio | Nome do modelo |
+| `VITE_API_PROXY` | `http://localhost:8000` | Destino do proxy `/api` no desenvolvimento |
+
+Sem as três variáveis do Copilot, a aplicação usa a análise heurística offline. Falhas no provedor também retornam à heurística; a interface identifica a fonte da recomendação.
 
 ## API
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| `GET` | `/api/health` | Verificação de saúde |
-| `GET` | `/api/city` | Cidade completa com regiões, vias, edificações, árvores e equipamentos |
-| `GET` | `/api/scenarios` | Cenários disponíveis e parâmetros |
-| `GET` | `/api/interventions/catalogue` | Catálogo de intervenções e fatores padrão |
-| `POST` | `/api/simulate` | Executa um cenário com um conjunto de intervenções |
-| `POST` | `/api/compare` | Compara dois resultados e devolve deltas por região |
-| `POST` | `/api/copilot` | Análise explicável do cenário corrente |
+Todas as rotas abaixo usam o prefixo `/api`. Os schemas completos estão em `backend/app/schemas.py` e podem ser explorados em `/docs`.
 
-Exemplo:
+| Método | Rota | Uso |
+| --- | --- | --- |
+| `GET` | `/health` | Healthcheck |
+| `GET` | `/city` | Cidade, regiões, vias, cursos d’água, equipamentos, edificações, árvores, relevo e fontes |
+| `GET` | `/scenarios` | Cenários disponíveis e impactos descritos |
+| `GET` | `/interventions/catalogue` | Tipos de intervenção, descrição, efeitos e fator padrão |
+| `GET` | `/costs/catalogue` | Hipóteses de custo publicadas pelo modelo |
+| `POST` | `/simulate` | Uma simulação com zero ou mais intervenções |
+| `POST` | `/compare` | Comparação de uma configuração com o baseline |
+| `POST` | `/run` | Baseline, resultado mitigado, comparação e custo em uma resposta atômica |
+| `POST` | `/optimize` | Portfólio de intervenções dentro de um orçamento |
+| `POST` | `/copilot` | Recomendação explicável para o cenário atual |
+
+### Exemplo de simulação
 
 ```bash
 curl -s http://localhost:8000/api/simulate \
   -H 'content-type: application/json' \
-  -d '{"scenario": {"type": "extreme_rain", "intensity": 0.8, "duration": 0.6},
-       "interventions": [
-         {"id": "int-1", "type": "reservoir", "region_id": "region-02",
-          "location": {"x": 0, "y": 0, "lat": null, "lng": null},
-          "impact_factor": 1.0, "created_at": "2024-05-17T00:00:00Z"}
-       ]}' | python -m json.tool
+  -d '{
+    "scenario": {
+      "type": "extreme_rain",
+      "intensity": 0.8,
+      "duration": 0.6
+    },
+    "interventions": []
+  }' | python3 -m json.tool
 ```
 
-## Qualidade
+`intensity`, `duration` e `impact_factor` são números entre `0` e `1`. Os tipos de cenário são `extreme_rain` e `heat_wave`; os tipos de intervenção estão no catálogo.
+
+### Formato de `/api/city`
+
+O payload inclui `regions`, `roads`, `waterways`, `facilities`, `buildings`, `trees`, `boundary`, `elevation`, `vulnerability_points` e `sources`. Cada região possui geometria, centroide, métricas ambientais/sociais, quantidade de vias e equipamentos associados.
+
+Os cursos d’água têm `id`, `name` opcional, `kind`, `path`, `width_m` e origem. O frontend agrupa somente o nome para exibição; IDs e geometrias continuam distintos.
+
+## Desenvolvimento e qualidade
+
+Backend:
 
 ```bash
-# backend
 cd backend
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/mypy --explicit-package-bases app
+```
 
-# frontend
+Frontend:
+
+```bash
 cd frontend
 npm run typecheck
 npm run lint
 npm run build
 ```
 
-## Estrutura
+Para validar a integração manualmente, suba backend e frontend e percorra: selecionar região → simular → adicionar intervenção → re-simular → comparar.
 
-```
+## Estrutura do repositório
+
+```text
 backend/
   app/
-    api/routes.py       endpoints REST
-    ai/copilot.py       heurística + LLM opcional
-    data/city.py        gerador da cidade sintética
-    engine/             motor de simulação e intervenções
-    main.py             app FastAPI e CORS
-  tests/                pytest (35 testes)
+    api/routes.py             rotas REST
+    schemas.py                contratos Pydantic da API
+    ai/copilot.py             heurística e LLM opcional
+    data/                     cidade e fixtures geoespaciais
+    engine/                   simulação, custos, intervenções e otimização
+    main.py                   FastAPI, CORS e configuração
+  tests/                      testes do motor e da API
+  Dockerfile
+  pyproject.toml
+
 frontend/
   src/
-    components/         cena 3D e primitivos de UI
-    lib/                cliente HTTP, geo, tema
-    panels/             Cenário, Região, Mitigação, Comparação, Copilot, Camadas
-    state/              reducer e hook `useCityTwin`
+    App.tsx                   shell, etapas, tutorial e layout
+    components/               mapa 3D, geometria e componentes UI
+    panels/                   conteúdo contextual das etapas
+    state/                    reducer e hook useCityTwin
+    lib/                      API, geometria, tema e formatação
+  Dockerfile
+  vite.config.ts
+  README.md
 ```
 
-## Limitações conhecidas
+## Decisões e limitações conhecidas
 
-- Cidade sintética: não usa dados reais de chuva, solo ou população.
-- Propagação de enchente entre regiões é heurística (distribuição por vizinhança), não
-  hidráulica.
-- Sem persistência: reiniciar o backend descarta o cenário.
-- O LLM do Copilot é opcional e recebe apenas o resumo do cenário, nunca geometria completa.
+- A cidade é baseada nos fixtures de Franca/SP e carregada em memória; não há persistência nem autenticação.
+- O motor é determinístico e usa heurísticas para risco, vizinhança, custos e propagação de efeitos; não é um modelo hidráulico ou climático operacional.
+- O frontend mantém o contrato do backend e evita dependências adicionais para UI, tour e mapas.
+- A geometria 3D é otimizada com instancing em camadas repetitivas. Os cursos d’água são renderizados como linhas leves; uma fita de água animada é uma evolução futura.
+- O banco de dados e PostGIS foram deliberadamente adiados. A próxima evolução natural é substituir o carregamento integral por consultas e versionamento de dados geoespaciais.

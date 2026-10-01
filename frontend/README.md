@@ -1,42 +1,72 @@
-# CITY TWIN / RESILIA
+# Frontend — CITY TWIN / RESILIA
 
-Frontend React + TypeScript + Vite do digital twin de Franca/SP. A interface guia o usuário por quatro passos: **Observar → Simular → Mitigar → Comparar**.
+Aplicação React que apresenta o digital twin de Franca/SP em uma cena 3D e conduz o usuário por quatro etapas:
 
-## Rodando localmente
+1. **Observar:** explorar o mapa, consultar as regiões mais críticas e abrir o detalhe contextual.
+2. **Simular:** escolher chuva extrema ou onda de calor e ajustar intensidade/duração.
+3. **Mitigar:** testar intervenções no mapa, acompanhar orçamento e pedir uma sugestão ao Urban Copilot.
+4. **Comparar:** executar novamente o cenário e ler os deltas antes/depois.
+
+## Desenvolvimento
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-O Vite usa `http://localhost:8000` como proxy padrão para a API. Para outro endereço:
+O Vite serve em <http://localhost:5173> e encaminha `/api` para `http://localhost:8000`. Altere o destino sem editar código:
 
 ```bash
-VITE_API_PROXY=http://localhost:8010 npm run dev
+VITE_API_PROXY=http://127.0.0.1:8010 npm run dev
 ```
 
-Checks de entrega:
+Comandos disponíveis:
 
-```bash
-npm run typecheck
-npm run lint
-npm run build
-```
+| Comando | Finalidade |
+| --- | --- |
+| `npm run dev` | Servidor Vite com hot reload |
+| `npm run typecheck` | TypeScript sem emitir arquivos |
+| `npm run lint` | Oxlint |
+| `npm run build` | Typecheck + build de produção |
+| `npm run preview` | Servir o build localmente |
 
-## Estrutura
+## Arquitetura
 
-- `src/App.tsx`: shell responsivo, stepper, estados de carregamento/erro, tutorial e layout do mapa.
-- `src/components/ui.tsx`: componentes reutilizáveis de painel, botão, slider, selo de risco, legenda, tooltip e stepper.
-- `src/components/CityScene.tsx`: cena 3D, seleção, foco suave da câmera, risco territorial e labels contextuais.
+- `src/App.tsx`: shell da aplicação, stepper, layout desktop/mobile, tutorial, estados de erro e carregamento.
+- `src/components/CityScene.tsx`: Canvas, seleção, foco suave da câmera, labels contextuais, risco e placement.
 - `src/components/CityGeometry.tsx`: edifícios, vias, vegetação e cursos d’água.
-- `src/panels/`: conteúdo das etapas e detalhe contextual de região.
-- `src/state/`: reducer e hook `useCityTwin`, mantendo o estado centralizado.
-- `src/lib/`: cliente HTTP, geometria, tema, cores e formatação.
+- `src/components/Terrain.tsx`: polígonos de região, elevação, contornos, seleção e coloração de risco.
+- `src/components/ui.tsx`: `Panel`, `Button`, `Slider`, `RiskBadge`, `RiskLegend`, `Tooltip`, `Stepper` e estados vazios.
+- `src/panels/`: etapas de simulação, mitigação, comparação, Copilot, regiões e camadas.
+- `src/state/appState.ts`: reducer, pré-requisitos de etapa, seleção e staleness.
+- `src/state/useCityTwin.ts`: carregamento da cidade, chamadas REST, orçamento, Copilot e otimização.
+- `src/lib/api.ts`: cliente tipado da API sem alterar contratos do backend.
 
-## Decisões de UX
+## Contrato usado pelo frontend
 
-Labels de todas as regiões não ficam mais fixos no mapa. Apenas a seleção, o hover e até sete regiões críticas aparecem; nomes repetidos de cursos d’água são agrupados apenas para exibição. A cor do território comunica risco depois da simulação e a legenda fica sempre visível.
+O cliente consome:
 
-O mapa recebe `waterways` diretamente de `/api/city`, sem modificar o contrato do backend. Os cursos d’água são desenhados como linhas leves e associam sua cor ao risco da região mais próxima. Os números exibidos são estimativas da POC e não substituem dados oficiais.
+```text
+GET  /api/city
+GET  /api/interventions/catalogue
+GET  /api/costs/catalogue
+POST /api/run
+POST /api/optimize
+POST /api/copilot
+```
 
-O tour inicial usa `localStorage` (`resilia-tour-seen`) e pode ser reaberto pelo botão **Tutorial**. Não há dependências novas de UI, tour ou mapas.
+`/api/run` é preferido para manter baseline, resultado mitigado, comparação e custo na mesma resposta. Os tipos correspondentes estão em `src/types.ts`; a fonte oficial dos schemas é `backend/app/schemas.py`.
+
+## Decisões de UX e acessibilidade
+
+- Só uma etapa de trabalho aparece no painel principal por vez.
+- Comparar fica bloqueado até existir uma simulação e uma configuração mitigada reexecutada.
+- O território usa verde, amarelo e vermelho para comunicar risco, sempre acompanhado de texto/ícone.
+- Labels não ficam fixos em todos os polígonos: aparecem para seleção, hover e um conjunto reduzido de regiões críticas.
+- Nomes com sufixos numéricos são agrupados somente na camada de apresentação.
+- `waterways` é consumido diretamente de `/api/city`; a geometria não é modificada.
+- Controles têm foco visível, `aria-label` em sliders e navegação por teclado.
+- `prefers-reduced-motion` reduz transições e animações.
+- O tutorial inicial usa `localStorage` e pode ser reaberto pelo botão **Tutorial**.
+
+Os números são estimativas da POC e não substituem dados oficiais.
