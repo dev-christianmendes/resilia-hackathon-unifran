@@ -78,3 +78,65 @@ def test_copilot_accounts_for_existing_interventions():
     )
     assert response.analysis.region_id in {r.id for r in city.regions}
     assert response.follow_up_questions
+
+
+def test_copilot_always_prices_its_suggestion():
+    """A recommendation with no price cannot be weighed against a budget."""
+    city = get_city()
+    for scenario in (scenario_rain(0.8, 0.6), scenario_heat(0.8, 0.6)):
+        response = analyze(city, CopilotRequest(scenario=scenario, interventions=[]))
+        assert response.analysis.estimated_cost_brl > 0
+        assert "R$" in response.answer
+
+
+def test_a_generous_budget_keeps_the_rule_based_suggestion():
+    city = get_city()
+    without = analyze(city, CopilotRequest(scenario=scenario_rain(0.8, 0.6), interventions=[]))
+    with_budget = analyze(
+        city,
+        CopilotRequest(scenario=scenario_rain(0.8, 0.6), interventions=[], budget_brl=500_000_000),
+    )
+    assert with_budget.analysis.suggested_intervention == (without.analysis.suggested_intervention)
+    assert "ultrapassa o orçamento" not in with_budget.answer
+
+
+def test_a_tight_budget_replaces_an_unaffordable_suggestion():
+    """Silently swapping the project would not be a recommendation."""
+    city = get_city()
+    unconstrained = analyze(
+        city, CopilotRequest(scenario=scenario_rain(0.8, 0.6), interventions=[])
+    )
+    price = unconstrained.analysis.estimated_cost_brl
+
+    response = analyze(
+        city,
+        CopilotRequest(scenario=scenario_rain(0.8, 0.6), interventions=[], budget_brl=price * 0.6),
+    )
+    assert response.analysis.estimated_cost_brl <= price * 0.6
+    assert response.analysis.suggested_intervention != (
+        unconstrained.analysis.suggested_intervention
+    )
+    assert "ultrapassa o orçamento" in response.answer
+    assert str(unconstrained.analysis.region_id) == response.analysis.region_id
+
+
+def test_an_impossible_budget_says_so_instead_of_pretending():
+    city = get_city()
+    response = analyze(
+        city,
+        CopilotRequest(scenario=scenario_rain(0.8, 0.6), interventions=[], budget_brl=1.0),
+    )
+    assert "não cobre nenhuma intervenção" in response.answer
+    assert "OTIMIZAR" in response.answer
+
+
+def test_budget_does_not_change_the_risk_analysis():
+    """Money picks the project; it must not move the risk ranking."""
+    city = get_city()
+    without = analyze(city, CopilotRequest(scenario=scenario_heat(0.8, 0.6), interventions=[]))
+    with_budget = analyze(
+        city,
+        CopilotRequest(scenario=scenario_heat(0.8, 0.6), interventions=[], budget_brl=1.0),
+    )
+    assert without.analysis.region_id == with_budget.analysis.region_id
+    assert without.analysis.priority_score == with_budget.analysis.priority_score

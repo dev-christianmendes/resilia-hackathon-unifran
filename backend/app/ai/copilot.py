@@ -20,6 +20,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from app.engine.costs import ASSUMPTION_NOTICE, cost_for
 from app.engine.simulation import (
     FACTOR_LABELS,
     INTERVENTION_LABELS,
@@ -142,6 +143,27 @@ def _factor_sort_key(item: tuple[str, float]) -> float:
     return -item[1]
 
 
+def _price(
+    city: CityModel,
+    region_id: str,
+    intervention_type: InterventionType,
+    scenario: ScenarioParams,
+    affected_population: int,
+) -> float:
+    """Cost of one intervention on one region, from the shared cost model."""
+    from app.engine.interventions import DEFAULTS
+
+    region = next(r for r in city.regions if r.id == region_id)
+    cost, _ = cost_for(
+        intervention_type,
+        region,
+        scenario.intensity,
+        affected_population,
+        DEFAULTS[intervention_type],
+    )
+    return cost
+
+
 def _expected_effect(
     city: CityModel,
     scenario: ScenarioParams,
@@ -175,10 +197,82 @@ def _expected_effect(
     }
 
 
+def _brl(value: float) -> str:
+    """Money as the user reads it, not as a float."""
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:,.1f} mi".replace(".", ",")
+    if value >= 1_000:
+        return f"{value / 1_000:,.0f} mil".replace(".", ",")
+    return f"{value:,.0f}".replace(".", ",")
+
+
+def _fit_to_budget(
+    city: CityModel,
+    scenario: ScenarioParams,
+    result: SimulationResult,
+    region_id: str,
+    suggestion: InterventionType,
+    budget_brl: float | None,
+) -> tuple[InterventionType, float, str]:
+    """Keep the suggestion if it is affordable, else name what the budget buys.
+
+    The rule-based suggestion is deliberately not replaced silently. If it does
+    not fit, the user is told both the price they would need and which cheaper
+    work the same budget does buy in the same region, because a recommendation
+    that quietly swaps the project is not a recommendation.
+    """
+    if budget_brl is None:
+        return suggestion, _price(city, region_id, suggestion, scenario, 0), ""
+
+    region_result = next(r for r in result.regions if r.region_id == region_id)
+    suggested_cost = _price(
+        city, region_id, suggestion, scenario, region_result.affected_population
+    )
+    if suggested_cost <= budget_brl:
+        return suggestion, suggested_cost, ""
+
+    affordable: list[tuple[float, float, InterventionType]] = []
+    for candidate in InterventionType:
+        if candidate is suggestion:
+            continue
+        cost = _price(city, region_id, candidate, scenario, region_result.affected_population)
+        if cost <= budget_brl:
+            gain = _expected_effect(city, scenario, result, region_id, candidate)[
+                "affected_population_delta"
+            ]
+            affordable.append((float(gain) / cost, cost, candidate))
+
+    if not affordable:
+        cheapest = min(
+            (
+                _price(city, region_id, c, scenario, region_result.affected_population),
+                c,
+            )
+            for c in InterventionType
+        )
+        note = (
+            f"O orçamento de R$ {_brl(budget_brl)} não cobre nenhuma intervenção "
+            f"nesta região. A mais barata é {INTERVENTION_LABELS[cheapest[1]]} a "
+            f"R$ {_brl(cheapest[0])}. Use OTIMIZAR para montar um portfólio dentro do orçamento."
+        )
+        return suggestion, suggested_cost, note
+
+    _, cost, best = max(affordable, key=lambda item: item[0])
+    note = (
+        f"A sugestão habitual ({INTERVENTION_LABELS[suggestion]}) custa "
+        f"R$ {_brl(suggested_cost)} e ultrapassa o orçamento de R$ {_brl(budget_brl)}. "
+        f"Com esse valor, a alternativa mais eficiente na mesma região é "
+        f"{INTERVENTION_LABELS[best]} por R$ {_brl(cost)}. "
+        f"Use OTIMIZAR para comparar o portfólio completo."
+    )
+    return best, cost, note
+
+
 def _build_recommendation(
     city: CityModel,
     scenario: ScenarioParams,
     result: SimulationResult,
+    budget_brl: float | None = None,
 ) -> tuple[CopilotRecommendation, str]:
     regions = {r.id: r for r in city.regions}
     scored: list[tuple[str, float, list[CopilotFactor]]] = []
@@ -216,14 +310,27 @@ def _build_recommendation(
             suggestion = candidate
             break
 
+    suggestion, cost_brl, budget_note = _fit_to_budget(
+        city,
+        scenario,
+        result,
+        top_region_id,
+        suggestion,
+        budget_brl,
+    )
+
     expected = _expected_effect(city, scenario, result, top_region_id, suggestion)
 
     factor_lines = "\n".join(f"• {f.detail} (peso {f.weight:.2f})" for f in top_factors)
     answer = (
         f"Maior concentração de risco: {top_region.name}\n\n"
         f"Principais fatores:\n{factor_lines}\n\n"
-        f"Intervenção sugerida: {INTERVENTION_LABELS[suggestion]}\n\n"
-        f"Esta é uma hipótese do modelo. Use SIMULAR para medir o efeito real no cenário."
+        f"Intervenção sugerida: {INTERVENTION_LABELS[suggestion]}\n"
+        f"Custo estimado: R$ {_brl(cost_brl)}"
+        + (f" (orçamento de R$ {_brl(budget_brl)})" if budget_brl else "")
+        + "\n\n"
+        + (f"{budget_note}\n\n" if budget_note else "")
+        + "Esta é uma hipótese do modelo. Use SIMULAR para medir o efeito real no cenário."
     )
     headline = (
         f"{top_region.name} concentra o maior risco "
@@ -247,6 +354,7 @@ def _build_recommendation(
         factors=top_factors,
         suggested_intervention=suggestion,
         rationale=rationale,
+        estimated_cost_brl=cost_brl,
         expected_effect=expected,
         source="heuristic",
     ), answer
@@ -263,6 +371,7 @@ def _context(
     scenario: ScenarioParams,
     result: SimulationResult,
     interventions: list[Intervention],
+    recommendation: CopilotRecommendation | None = None,
 ) -> str:
     regions = {r.id: r for r in city.regions}
     rows = []
@@ -297,6 +406,8 @@ def _context(
             "scenario": scenario.model_dump(),
             "totals": result.totals.model_dump(),
             "interventions": [i.model_dump() for i in interventions],
+            "cost_assumptions": ASSUMPTION_NOTICE,
+            "recommendation": recommendation.model_dump() if recommendation else None,
             "regions": rows,
         },
         ensure_ascii=False,
@@ -395,14 +506,24 @@ def analyze(city: CityModel, request: CopilotRequest) -> CopilotResponse:
     result = run_simulation(
         city, scenario, request.interventions, "mitigated" if request.interventions else "baseline"
     )
-    recommendation, heuristic_answer = _build_recommendation(city, scenario, result)
+    recommendation, heuristic_answer = _build_recommendation(
+        city, scenario, result, request.budget_brl
+    )
     comparison = compare(city, scenario, request.interventions) if request.interventions else None
 
     prompt_parts = [
         f"Pergunta do usuário: {request.question}",
         "Contexto da simulação (JSON):",
-        _context(city, scenario, result, request.interventions),
+        _context(city, scenario, result, request.interventions, recommendation),
     ]
+    if request.budget_brl is not None:
+        prompt_parts.append(
+            f"Orçamento disponível do usuário: R$ {_brl(request.budget_brl)}. "
+            f"A sugestão regional custa R$ {_brl(recommendation.estimated_cost_brl)} "
+            "e esses valores são hipóteses de custo, não cotações. "
+            "Se a sugestão não couber, diga isso e aponte a alternativa mais "
+            "eficiente dentro do orçamento em vez de trocar a obra em silêncio."
+        )
     if comparison is not None:
         prompt_parts.append(
             "Efeito das intervenções já inseridas (antes -> depois): "
