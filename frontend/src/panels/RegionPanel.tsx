@@ -1,6 +1,6 @@
 import type { Region, RegionResult, SimulationTotals } from '../types'
 import { FACILITY_META, RISK_COLORS, RISK_LABELS, formatPercent } from '../lib/theme'
-import { Button, Panel, RiskBadge } from '../components/ui'
+import { Button, Panel, RiskBadge, Tooltip } from '../components/ui'
 import { useMemo, useState } from 'react'
 
 function toneFor(region: Region, result: RegionResult | null) {
@@ -138,10 +138,18 @@ function RegionDetail({
         <Row label="População estimada" value={m.population.toLocaleString('pt-BR')} />
         <Row label="Densidade" value={`${m.population_density.toLocaleString('pt-BR')} hab/km²`} />
         <Row label="Cobertura vegetal" value={formatPercent(m.vegetation_index)} />
-        <Row label="Impermeabilidade" value={formatPercent(m.impermeability)} />
+        <Row
+          label="Impermeabilidade"
+          value={formatPercent(m.impermeability)}
+          hint="Quanto do solo está coberto por construções ou pavimento. Quanto maior, menos água infiltra."
+        />
         <Row label="Risco de alagamento (base)" value={formatPercent(m.flood_risk)} />
         <Row label="Exposição térmica (base)" value={formatPercent(m.heat_exposure)} />
-        <Row label="Vulnerabilidade social" value={formatPercent(m.vulnerability)} />
+        <Row
+          label="Vulnerabilidade social"
+          value={formatPercent(m.vulnerability)}
+          hint="Estimativa de quantas pessoas podem ter mais dificuldade para se proteger ou se recuperar."
+        />
       </dl>
 
       <div>
@@ -222,10 +230,18 @@ function RegionDetail({
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2 border-b border-slate-800/60 pb-1">
-      <dt className="text-slate-400">{label}</dt>
+      <dt className="text-slate-400">
+        {hint ? (
+          <Tooltip label={hint}>
+            <span className="cursor-help border-b border-dotted border-slate-500">{label} ?</span>
+          </Tooltip>
+        ) : (
+          label
+        )}
+      </dt>
       <dd className="font-mono text-slate-100">{value}</dd>
     </div>
   )

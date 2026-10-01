@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Canvas, type ThreeEvent } from '@react-three/fiber'
+import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import { Vector3 } from 'three'
 import type {
   Building,
   Facility,
@@ -71,6 +72,7 @@ export function CityScene(props: SceneProps) {
         maxPolarAngle={Math.PI / 2.1}
         target={[0, 0, 0]}
       />
+      <CameraFocus regions={props.regions} selectedRegionId={props.selectedRegionId} />
 
       <hemisphereLight args={['#93c5fd', '#0f172a', scenarioType === 'heat_wave' ? 0.95 : 0.65]} />
       <directionalLight
@@ -89,6 +91,29 @@ export function CityScene(props: SceneProps) {
       <CityContents {...props} />
     </Canvas>
   )
+}
+
+function CameraFocus({
+  regions,
+  selectedRegionId,
+}: {
+  regions: Region[]
+  selectedRegionId: string | null
+}) {
+  const { camera } = useThree()
+  const target = useMemo(
+    () => regions.find((region) => region.id === selectedRegionId)?.centroid ?? null,
+    [regions, selectedRegionId],
+  )
+
+  useFrame(() => {
+    if (!target) return
+    const x = target.x * METERS_TO_UNITS
+    const z = -target.y * METERS_TO_UNITS
+    camera.position.lerp(new Vector3(x, 165, z + 205), 0.035)
+    camera.lookAt(x, 0, z)
+  })
+  return null
 }
 
 function CityContents({

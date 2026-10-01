@@ -1,32 +1,42 @@
-# React + TypeScript + Vite
+# CITY TWIN / RESILIA
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Frontend React + TypeScript + Vite do digital twin de Franca/SP. A interface guia o usuário por quatro passos: **Observar → Simular → Mitigar → Comparar**.
 
-Currently, two official plugins are available:
+## Rodando localmente
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+O Vite usa `http://localhost:8000` como proxy padrão para a API. Para outro endereço:
+
+```bash
+VITE_API_PROXY=http://localhost:8010 npm run dev
+```
+
+Checks de entrega:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Estrutura
+
+- `src/App.tsx`: shell responsivo, stepper, estados de carregamento/erro, tutorial e layout do mapa.
+- `src/components/ui.tsx`: componentes reutilizáveis de painel, botão, slider, selo de risco, legenda, tooltip e stepper.
+- `src/components/CityScene.tsx`: cena 3D, seleção, foco suave da câmera, risco territorial e labels contextuais.
+- `src/components/CityGeometry.tsx`: edifícios, vias, vegetação e cursos d’água.
+- `src/panels/`: conteúdo das etapas e detalhe contextual de região.
+- `src/state/`: reducer e hook `useCityTwin`, mantendo o estado centralizado.
+- `src/lib/`: cliente HTTP, geometria, tema, cores e formatação.
+
+## Decisões de UX
+
+Labels de todas as regiões não ficam mais fixos no mapa. Apenas a seleção, o hover e até sete regiões críticas aparecem; nomes repetidos de cursos d’água são agrupados apenas para exibição. A cor do território comunica risco depois da simulação e a legenda fica sempre visível.
+
+O mapa recebe `waterways` diretamente de `/api/city`, sem modificar o contrato do backend. Os cursos d’água são desenhados como linhas leves e associam sua cor ao risco da região mais próxima. Os números exibidos são estimativas da POC e não substituem dados oficiais.
+
+O tour inicial usa `localStorage` (`resilia-tour-seen`) e pode ser reaberto pelo botão **Tutorial**. Não há dependências novas de UI, tour ou mapas.
