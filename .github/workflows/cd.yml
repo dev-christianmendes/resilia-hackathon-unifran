@@ -98,16 +98,17 @@ jobs:
 
       - name: Verifica health da API
         run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8000/api/health > /dev/null; then
-              echo "backend saudável"
-              exit 0
+          attempt=0
+          until curl -fsS http://127.0.0.1:8000/api/health > /dev/null; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
+              echo "backend nao respondeu /api/health apos $attempt tentativas"
+              docker compose -f docker-compose.yml -f docker-compose.ci.yml logs backend || true
+              exit 1
             fi
             sleep 5
           done
-          echo "backend nao respondeu /api/health"
-          docker compose logs backend || true
-          exit 1
+          echo "backend saudavel na tentativa $attempt"
 
       - name: Confere que a API serve a cidade real
         run: |
@@ -129,8 +130,10 @@ jobs:
 
       - name: Verifica que o frontend serve
         run: |
-          curl -fsS http://127.0.0.1:8080/ | grep -qi '<div id="root">'
-          echo "frontend servindo"
+          # Sem casar com a tag inteira: o Vite pode emitir o div vazio ou com
+          # atributos, e o que importa e que o mount do React existe no HTML.
+          curl -fsS http://127.0.0.1:8080/ | grep -q 'id="root"'
+          echo "frontend servindo o mount do React"
 
       - name: Derruba a stack
         if: always()
