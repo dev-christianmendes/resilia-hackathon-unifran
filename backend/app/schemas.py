@@ -9,6 +9,9 @@ from pydantic import BaseModel, Field
 class ScenarioType(str, Enum):
     EXTREME_RAIN = "extreme_rain"
     HEAT_WAVE = "heat_wave"
+    HAILSTORM = "hailstorm"
+    WINDSTORM = "windstorm"
+    WILDFIRE = "wildfire"
 
 
 class InterventionType(str, Enum):
@@ -170,6 +173,12 @@ class RegionMetrics(BaseModel):
     population_density: float
     vegetation_index: float = Field(ge=0, le=1)
     impermeability: float = Field(ge=0, le=1)
+    drainage_clogging: float = Field(
+        default=0.0,
+        ge=0,
+        le=1,
+        description="Estimativa de obstrução da drenagem superficial da região",
+    )
     flood_risk: float = Field(ge=0, le=1)
     heat_exposure: float = Field(ge=0, le=1)
     elevation_m: float = Field(description="Elevação média medida no DEM, em metros")

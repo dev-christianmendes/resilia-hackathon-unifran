@@ -2,7 +2,13 @@ import type { ScenarioParams, ScenarioType, Stage, SimulationResult } from '../t
 import { SCENARIO_META } from '../lib/theme'
 import { Button, Panel, RiskLegend, Slider, Stat } from '../components/ui'
 
-const SCENARIOS: ScenarioType[] = ['extreme_rain', 'heat_wave']
+const SCENARIOS: ScenarioType[] = [
+  'extreme_rain',
+  'heat_wave',
+  'hailstorm',
+  'windstorm',
+  'wildfire',
+]
 
 export function ScenarioPanel({
   scenario,
@@ -32,8 +38,7 @@ export function ScenarioPanel({
   return (
     <Panel
       title="Cenário"
-      subtitle="El Niño · choose o evento e os parâmetros"
-      action={<span className="text-[10px] text-slate-500">{SCENARIO_META[scenario.type].icon}</span>}
+      subtitle="Escolha um evento e ajuste os parâmetros"
     >
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-2">
@@ -51,9 +56,7 @@ export function ScenarioPanel({
                     : 'border-slate-800 hover:border-slate-600'
                 }`}
               >
-                <span className="block text-base font-semibold text-slate-100">
-                <span aria-hidden="true">{meta.icon}</span> {meta.label}
-                </span>
+                <span className="block text-base font-semibold text-slate-100">{meta.label}</span>
                 <span className="mt-0.5 block text-[11px] leading-snug text-slate-400">
                   {meta.description}
                 </span>
@@ -81,7 +84,7 @@ export function ScenarioPanel({
 
         {result && (
           <>
-            <p className="rounded-lg border border-sky-800/70 bg-sky-950/40 px-3 py-2 text-sm leading-relaxed text-sky-100">
+            <p className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm leading-relaxed text-sky-950">
               Com {SCENARIO_META[scenario.type].label.toLocaleLowerCase('pt-BR')} a {Math.round(scenario.intensity * 100)}%,{' '}
               {result.totals.compromised_roads} vias podem ficar bloqueadas e{' '}
               {result.totals.critical_facilities_affected} equipamentos críticos podem ser afetados.

@@ -130,4 +130,22 @@ def scenarios() -> list[dict[str, object]]:
                 "necessidade de resfriamento",
             ],
         },
+        {
+            "type": "hailstorm",
+            "label": "Granizo",
+            "params": ["intensity", "duration"],
+            "impacts": ["danos a coberturas", "equipamentos expostos", "interrupção de serviços"],
+        },
+        {
+            "type": "windstorm",
+            "label": "Ventania",
+            "params": ["intensity", "duration"],
+            "impacts": ["queda de árvores", "bloqueio de vias", "danos a edificações"],
+        },
+        {
+            "type": "wildfire",
+            "label": "Queimada de grande porte",
+            "params": ["intensity", "duration"],
+            "impacts": ["vegetação seca", "exposição à fumaça", "isolamento de regiões"],
+        },
     ]

@@ -226,7 +226,13 @@ def test_unknown_scenario_type_is_rejected():
 
 def test_scenarios_catalogue():
     items = client.get("/api/scenarios").json()
-    assert {item["type"] for item in items} == {"extreme_rain", "heat_wave"}
+    assert {item["type"] for item in items} == {
+        "extreme_rain",
+        "heat_wave",
+        "hailstorm",
+        "windstorm",
+        "wildfire",
+    }
 
 
 def test_run_prices_interventions_the_client_left_unpriced():

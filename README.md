@@ -1,6 +1,6 @@
 # CITY TWIN — RESILIA
 
-Digital twin urbano para explorar a resiliência de Franca/SP diante de chuva extrema e onda de calor. A POC permite observar o território, simular um evento, testar intervenções e comparar estimativas antes/depois.
+Digital twin urbano para explorar a resiliência de Franca/SP diante de chuva extrema, onda de calor, granizo, ventania e queimadas de grande porte. A POC permite observar o território, simular um evento, testar intervenções e comparar estimativas antes/depois.
 
 > **Importante:** todos os números são estimativas do modelo da POC. Não são previsões operacionais e não substituem dados oficiais, estudos hidráulicos, dimensionamento de obras ou decisões da Defesa Civil.
 
@@ -13,6 +13,21 @@ O produto é um monorepo com:
 - **Dados:** fixtures versionadas em `backend/app/data/fixtures/franca/`, carregadas em memória. Não há banco de dados ou persistência de cenários.
 
 Fluxo da interface: **Observar → Simular → Mitigar → Comparar**.
+
+## Guia visual
+
+O diagrama abaixo resume o fluxo que a banca pode seguir mesmo sem executar a aplicação:
+
+![Fluxo de avaliação do City Twin](docs/visual-guide.svg)
+
+### Roteiro de avaliação
+
+1. Em **Observar**, arraste o mapa para orbitar, use a roda ou o gesto de pinça para aproximar e clique em uma região. O contorno e o painel lateral mostram o detalhe selecionado; cursos d'água nomeados aparecem apenas de forma seletiva para preservar a leitura.
+2. Em **Simular**, escolha um dos cinco eventos, ajuste intensidade e duração e pressione **Simular**. O território recebe cores de risco e a legenda explica baixo, moderado e alto.
+3. Em **Mitigar**, escolha uma intervenção, clique no mapa ou na região selecionada e acompanhe o orçamento. O botão do Urban Copilot sugere uma combinação explicável; a aplicação não aplica nada sem confirmação.
+4. Em **Comparar**, use o controle antes/depois e leia os deltas. A tabela por região é opcional e o texto de transbordo explica quando uma obra beneficia áreas vizinhas.
+
+Todos os painéis têm estados de carregamento, vazio e erro. O botão **Reiniciar** limpa a simulação após confirmação e **Tutorial** reabre o tour inicial.
 
 ## Stack
 
@@ -127,13 +142,13 @@ curl -s http://localhost:8000/api/simulate \
   }' | python3 -m json.tool
 ```
 
-`intensity`, `duration` e `impact_factor` são números entre `0` e `1`. Os tipos de cenário são `extreme_rain` e `heat_wave`; os tipos de intervenção estão no catálogo.
+`intensity`, `duration` e `impact_factor` são números entre `0` e `1`. Os tipos de cenário são `extreme_rain`, `heat_wave`, `hailstorm`, `windstorm` e `wildfire`; os tipos de intervenção estão no catálogo.
 
 ### Formato de `/api/city`
 
 O payload inclui `regions`, `roads`, `waterways`, `facilities`, `buildings`, `trees`, `boundary`, `elevation`, `vulnerability_points` e `sources`. Cada região possui geometria, centroide, métricas ambientais/sociais, quantidade de vias e equipamentos associados.
 
-Os cursos d’água têm `id`, `name` opcional, `kind`, `path`, `width_m` e origem. O frontend agrupa somente o nome para exibição; IDs e geometrias continuam distintos.
+Os cursos d’água têm `id`, `name` opcional, `kind`, `path`, `width_m` e origem. O frontend agrupa somente o nome para exibição; IDs e geometrias continuam distintos. Cada região também publica `drainage_clogging`, um índice estimado de obstrução da drenagem superficial entre `0` e `1`. Ele combina impermeabilidade, pontos documentados de vulnerabilidade, densidade viária e proximidade de cursos d'água, e agrava o risco de alagamento de forma explicável no motor.
 
 ## Desenvolvimento e qualidade
 

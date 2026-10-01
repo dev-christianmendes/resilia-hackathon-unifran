@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei'
-import { Vector3 } from 'three'
 import type {
   Building,
   Facility,
@@ -19,9 +18,9 @@ import type {
 import { METERS_TO_UNITS, regionAt } from '../lib/geo'
 import { Buildings } from './Buildings'
 import { Facilities, RegionLabel } from './Facilities'
-import { FloodOverlay, HeatEffect, RainEffect } from './ClimateEffects'
+import { FloodOverlay, HazardEffect, HeatEffect, RainEffect } from './ClimateEffects'
 import { Interventions, PlacementGhost } from './Interventions'
-import { Roads, Vegetation, Waterways } from './CityGeometry'
+import { Roads, Vegetation, WaterwayLabels, Waterways } from './CityGeometry'
 import { Terrain } from './Terrain'
 
 const REGION_BASE = METERS_TO_UNITS * 40
@@ -60,8 +59,8 @@ export function CityScene(props: SceneProps) {
       onPointerMissed={() => props.onSelectRegion(null)}
       className="h-full w-full"
     >
-      <color attach="background" args={['#05080d']} />
-      <fog attach="fog" args={['#05080d', 160, 460]} />
+      <color attach="background" args={['#f8fafc']} />
+      <fog attach="fog" args={['#f8fafc', 160, 460]} />
       <PerspectiveCamera makeDefault position={[0, 165, 205]} fov={45} near={1} far={3000} />
       <OrbitControls
         makeDefault
@@ -72,13 +71,11 @@ export function CityScene(props: SceneProps) {
         maxPolarAngle={Math.PI / 2.1}
         target={[0, 0, 0]}
       />
-      <CameraFocus regions={props.regions} selectedRegionId={props.selectedRegionId} />
-
-      <hemisphereLight args={['#93c5fd', '#0f172a', scenarioType === 'heat_wave' ? 0.95 : 0.65]} />
+      <hemisphereLight args={['#dbeafe', '#e2e8f0', scenarioType === 'heat_wave' ? 1.2 : 0.9]} />
       <directionalLight
         position={[90, 170, 70]}
         intensity={scenarioType === 'heat_wave' ? 2.5 : 1.6}
-        color={scenarioType === 'heat_wave' ? '#fdba74' : '#e2e8f0'}
+        color={scenarioType === 'heat_wave' ? '#fb923c' : '#ffffff'}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-far={600}
@@ -91,29 +88,6 @@ export function CityScene(props: SceneProps) {
       <CityContents {...props} />
     </Canvas>
   )
-}
-
-function CameraFocus({
-  regions,
-  selectedRegionId,
-}: {
-  regions: Region[]
-  selectedRegionId: string | null
-}) {
-  const { camera } = useThree()
-  const target = useMemo(
-    () => regions.find((region) => region.id === selectedRegionId)?.centroid ?? null,
-    [regions, selectedRegionId],
-  )
-
-  useFrame(() => {
-    if (!target) return
-    const x = target.x * METERS_TO_UNITS
-    const z = -target.y * METERS_TO_UNITS
-    camera.position.lerp(new Vector3(x, 165, z + 205), 0.035)
-    camera.lookAt(x, 0, z)
-  })
-  return null
 }
 
 function CityContents({
@@ -230,6 +204,7 @@ function CityContents({
         regionForWaterway={regionForWaterway}
         visible={layers.terrain || layers.risk}
       />
+      <WaterwayLabels waterways={waterways} />
       {layers.facilities && (
         <Facilities
           facilities={facilities}
@@ -259,6 +234,9 @@ function CityContents({
           visible={layers.risk}
           scenarioType={scenarioType}
         />
+      )}
+      {hasResult && scenarioType !== 'extreme_rain' && scenarioType !== 'heat_wave' && (
+        <HazardEffect scenarioType={scenarioType} intensity={intensity} visible={layers.risk} />
       )}
 
       {layers.terrain && (

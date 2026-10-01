@@ -67,6 +67,7 @@ INTERVENTION_LABELS: dict[InterventionType, str] = {
 FACTOR_LABELS: dict[str, str] = {
     "hazard": "intensidade e duração do evento",
     "drainage_deficit": "déficit de drenagem pela impermeabilidade do solo",
+    "drainage_clogging": "obstrução estimada da drenagem superficial",
     "storage_capacity": "capacidade de armazenamento de água",
     "terrain_susceptibility": "susceptibilidade do terreno a alagamentos",
     "social_vulnerability": "vulnerabilidade social da população",
@@ -76,6 +77,9 @@ FACTOR_LABELS: dict[str, str] = {
     "thermal_mass": "capacidade de retenção de calor do solo",
     "heat_exposure": "exposição térmica da região",
     "heat_load": "carga térmica do cenário",
+    "building_exposure": "exposição de edificações ao granizo",
+    "wind_exposure": "exposição de edificações e vegetação ao vento",
+    "dry_vegetation": "vegetação seca disponível para queimadas",
 }
 
 
@@ -225,6 +229,7 @@ def _susceptibility(*parts: tuple[float, float]) -> float:
 def _rain_factors(region: Region, effective: dict[str, float], hazard: float) -> dict[str, float]:
     drainage_deficit = _clamp(
         effective["impermeability"] * (1 - 0.6 * effective["vegetation_index"])
+        + 0.35 * region.metrics.drainage_clogging
     )
     storage = _clamp(effective["storage_capacity"] * 0.6 + effective["infiltration_boost"] * 0.4)
     terrain = _clamp(region.metrics.flood_risk)
@@ -240,6 +245,7 @@ def _rain_factors(region: Region, effective: dict[str, float], hazard: float) ->
     return {
         "hazard": hazard,
         "drainage_deficit": _round(drainage_deficit),
+        "drainage_clogging": _round(region.metrics.drainage_clogging),
         "storage_capacity": _round(storage),
         "terrain_susceptibility": _round(terrain),
         "social_vulnerability": _round(social),
@@ -274,6 +280,44 @@ def _heat_factors(region: Region, effective: dict[str, float], hazard: float) ->
     }
 
 
+def _hazard_factors(
+    region: Region, effective: dict[str, float], hazard: float, scenario: ScenarioType
+) -> dict[str, float]:
+    """Estimate non-flood hazards using the same explainable factor contract."""
+    social = _clamp(0.5 + 0.5 * region.metrics.vulnerability)
+    if scenario is ScenarioType.HAILSTORM:
+        exposure = _clamp(0.55 * region.metrics.building_footprint_ratio + 0.45 * social)
+        risk = _clamp(hazard * (0.55 * exposure + 0.45 * region.metrics.historical_events / 5))
+        return {
+            "hazard": hazard,
+            "building_exposure": _round(exposure),
+            "social_vulnerability": _round(social),
+            "risk": _round(risk),
+        }
+    if scenario is ScenarioType.WINDSTORM:
+        exposure = _clamp(
+            0.45 * region.metrics.building_footprint_ratio
+            + 0.30 * social
+            + 0.25 * (1 - region.metrics.vegetation_index)
+        )
+        risk = _clamp(hazard * exposure)
+        return {
+            "hazard": hazard,
+            "wind_exposure": _round(exposure),
+            "social_vulnerability": _round(social),
+            "risk": _round(risk),
+        }
+    fuel = _clamp(0.6 * region.metrics.vegetation_index + 0.4 * region.metrics.heat_exposure)
+    exposure = _clamp(0.55 * fuel + 0.45 * social)
+    risk = _clamp(hazard * exposure)
+    return {
+        "hazard": hazard,
+        "dry_vegetation": _round(fuel),
+        "social_vulnerability": _round(social),
+        "risk": _round(risk),
+    }
+
+
 def _region_result(
     region: Region,
     scenario: ScenarioParams,
@@ -290,9 +334,12 @@ def _region_result(
     if scenario.type is ScenarioType.EXTREME_RAIN:
         factors = _rain_factors(region, effective, hazard)
         impact_multiplier = 1.0
-    else:
+    elif scenario.type is ScenarioType.HEAT_WAVE:
         factors = _heat_factors(region, effective, hazard)
         impact_multiplier = 1.12
+    else:
+        factors = _hazard_factors(region, effective, hazard, scenario.type)
+        impact_multiplier = 1.0
 
     risk = factors["risk"]
     relief = _clamp(effective["population_relief"])
@@ -384,6 +431,8 @@ def _baseline_risk(
         _rain_factors(region, empty, hazard)
         if scenario.type is ScenarioType.EXTREME_RAIN
         else _heat_factors(region, empty, hazard)
+        if scenario.type is ScenarioType.HEAT_WAVE
+        else _hazard_factors(region, empty, hazard, scenario.type)
     )
     return factors["risk"]
 

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">Fluxo de avaliação do City Twin</title>
+  <desc id="desc">Diagrama com quatro etapas: observar, simular, mitigar e comparar.</desc>
+  <rect width="1200" height="420" rx="24" fill="#f8fafc"/>
+  <text x="60" y="62" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#0f172a">CITY TWIN / RESILIA</text>
+  <text x="60" y="94" font-family="Arial,sans-serif" font-size="16" fill="#475569">Roteiro rápido para a demonstração da banca</text>
+  <g font-family="Arial,sans-serif">
+    <g transform="translate(60 145)">
+      <rect width="240" height="170" rx="16" fill="#fff" stroke="#16a34a" stroke-width="3"/>
+      <text x="22" y="42" font-size="18" font-weight="700" fill="#166534">1 · OBSERVAR</text>
+      <text x="22" y="78" font-size="15" fill="#334155">Navegue pelo mapa 3D</text>
+      <text x="22" y="104" font-size="15" fill="#334155">e selecione uma região.</text>
+      <circle cx="202" cy="132" r="20" fill="#dcfce7"/><text x="195" y="139" font-size="20" fill="#166534">1</text>
+    </g>
+    <path d="M320 230h55" stroke="#94a3b8" stroke-width="3"/><path d="m367 220 12 10-12 10" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <g transform="translate(390 145)">
+      <rect width="240" height="170" rx="16" fill="#fff" stroke="#eab308" stroke-width="3"/>
+      <text x="22" y="42" font-size="18" font-weight="700" fill="#854d0e">2 · SIMULAR</text>
+      <text x="22" y="78" font-size="15" fill="#334155">Escolha o evento,</text>
+      <text x="22" y="104" font-size="15" fill="#334155">intensidade e duração.</text>
+      <circle cx="202" cy="132" r="20" fill="#fef9c3"/><text x="195" y="139" font-size="20" fill="#854d0e">2</text>
+    </g>
+    <path d="M650 230h55" stroke="#94a3b8" stroke-width="3"/><path d="m697 220 12 10-12 10" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <g transform="translate(720 145)">
+      <rect width="240" height="170" rx="16" fill="#fff" stroke="#f97316" stroke-width="3"/>
+      <text x="22" y="42" font-size="18" font-weight="700" fill="#9a3412">3 · MITIGAR</text>
+      <text x="22" y="78" font-size="15" fill="#334155">Teste obras no mapa</text>
+      <text x="22" y="104" font-size="15" fill="#334155">sem ultrapassar o orçamento.</text>
+      <circle cx="202" cy="132" r="20" fill="#ffedd5"/><text x="195" y="139" font-size="20" fill="#9a3412">3</text>
+    </g>
+    <path d="M980 230h55" stroke="#94a3b8" stroke-width="3"/><path d="m1027 220 12 10-12 10" fill="none" stroke="#94a3b8" stroke-width="3"/>
+    <g transform="translate(1050 145)">
+      <rect width="100" height="170" rx="16" fill="#fff" stroke="#2563eb" stroke-width="3"/>
+      <text x="18" y="42" font-size="18" font-weight="700" fill="#1d4ed8">4</text>
+      <text x="18" y="78" font-size="15" fill="#334155">Compare</text>
+      <text x="18" y="102" font-size="15" fill="#334155">antes/</text>
+      <text x="18" y="124" font-size="15" fill="#334155">depois.</text>
+    </g>
+  </g>
+</svg>

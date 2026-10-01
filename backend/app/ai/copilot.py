@@ -111,6 +111,10 @@ FACTOR_DETAIL: dict[str, str] = {
     "runoff": "escoamento superficial gerado pela chuva",
     "storage_capacity": "capacidade de armazenamento de água existente",
     "heat_exposure": "exposição térmica histórica da região",
+    "drainage_clogging": "obstrução estimada da drenagem superficial",
+    "building_exposure": "exposição de edificações ao granizo",
+    "wind_exposure": "exposição de edificações e vegetação ao vento",
+    "dry_vegetation": "vegetação seca disponível para queimadas",
 }
 
 # Dominant factor -> intervention that addresses it. Ordered by specificity, and
@@ -126,12 +130,27 @@ _SUGGESTION_RULES: dict[ScenarioType, list[tuple[tuple[str, ...], InterventionTy
         (("heat_exposure", "heat_load"), InterventionType.CARE_POST),
         (("social_vulnerability",), InterventionType.SHELTER),
     ],
+    ScenarioType.HAILSTORM: [
+        (("building_exposure",), InterventionType.SHELTER),
+        (("social_vulnerability",), InterventionType.CARE_POST),
+    ],
+    ScenarioType.WINDSTORM: [
+        (("wind_exposure",), InterventionType.ALTERNATE_ROUTE),
+        (("social_vulnerability",), InterventionType.SHELTER),
+    ],
+    ScenarioType.WILDFIRE: [
+        (("dry_vegetation",), InterventionType.GREEN_AREA),
+        (("social_vulnerability",), InterventionType.SHELTER),
+    ],
 }
 
 
 _SCENARIO_LABELS: dict[ScenarioType, str] = {
     ScenarioType.EXTREME_RAIN: "chuva extrema",
     ScenarioType.HEAT_WAVE: "onda de calor",
+    ScenarioType.HAILSTORM: "granizo",
+    ScenarioType.WINDSTORM: "ventania",
+    ScenarioType.WILDFIRE: "queimada de grande porte",
 }
 
 

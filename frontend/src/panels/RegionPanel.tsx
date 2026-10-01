@@ -144,6 +144,11 @@ function RegionDetail({
           hint="Quanto do solo está coberto por construções ou pavimento. Quanto maior, menos água infiltra."
         />
         <Row label="Risco de alagamento (base)" value={formatPercent(m.flood_risk)} />
+        <Row
+          label="Obstrução da drenagem"
+          value={formatPercent(m.drainage_clogging)}
+          hint="Estimativa de quanto resíduos, pavimento e baixa infiltração podem reduzir o escoamento da água."
+        />
         <Row label="Exposição térmica (base)" value={formatPercent(m.heat_exposure)} />
         <Row
           label="Vulnerabilidade social"

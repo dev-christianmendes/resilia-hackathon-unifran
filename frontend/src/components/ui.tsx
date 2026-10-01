@@ -15,13 +15,13 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-xl border border-slate-800 bg-slate-900/70 backdrop-blur ${className}`}
+      className={`rounded-xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur ${className}`}
     >
       {title && (
-        <header className="flex items-start justify-between gap-3 border-b border-slate-800 px-4 py-3">
+        <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold tracking-wide text-slate-100 uppercase">{title}</h2>
-            {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+            <h2 className="text-sm font-semibold tracking-wide text-slate-900 uppercase">{title}</h2>
+            {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
           </div>
           {action}
         </header>

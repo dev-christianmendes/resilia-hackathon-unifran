@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Instance, Instances, Line } from '@react-three/drei'
+import { Html, Instance, Instances, Line } from '@react-three/drei'
 import type { Road, Tree, Waterway } from '../types'
 import { METERS_TO_UNITS, elevationToHeight } from '../lib/geo'
 
@@ -130,6 +130,38 @@ export function Waterways({
             transparent
             opacity={0.8}
           />
+        )
+      })}
+    </group>
+  )
+}
+
+export function WaterwayLabels({ waterways }: { waterways: Waterway[] }) {
+  const named = waterways
+    .filter((waterway) => waterway.name)
+    .filter(
+      (waterway, index, list) =>
+        list.findIndex((candidate) => candidate.name === waterway.name) === index,
+    )
+    .slice(0, 8)
+
+  return (
+    <group>
+      {named.map((waterway) => {
+        const point = waterway.path[Math.floor(waterway.path.length / 2)]
+        if (!point || !waterway.name) return null
+        return (
+          <Html
+            key={waterway.id}
+            position={[point.x * METERS_TO_UNITS, REGION_BASE + 3.5, -point.y * METERS_TO_UNITS]}
+            center
+            distanceFactor={120}
+            style={{ pointerEvents: 'none' }}
+          >
+            <span className="rounded border border-sky-300 bg-white/90 px-2 py-1 text-[10px] font-medium whitespace-nowrap text-sky-900 shadow-sm">
+              {waterway.name}
+            </span>
+          </Html>
         )
       })}
     </group>

@@ -168,3 +168,31 @@ export function HeatEffect({
   )
 }
 
+/** Lightweight visual cues for hazards that do not need a full particle system. */
+export function HazardEffect({
+  scenarioType,
+  intensity,
+  visible,
+}: {
+  scenarioType: ScenarioType
+  intensity: number
+  visible: boolean
+}) {
+  if (!visible || intensity <= 0.01 || scenarioType === 'extreme_rain' || scenarioType === 'heat_wave') {
+    return null
+  }
+
+  const color =
+    scenarioType === 'hailstorm'
+      ? '#60a5fa'
+      : scenarioType === 'windstorm'
+        ? '#14b8a6'
+        : '#ef4444'
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, REGION_BASE + 22, 0]}>
+      <planeGeometry args={[METERS_TO_UNITS * 9000, METERS_TO_UNITS * 9000]} />
+      <meshBasicMaterial color={color} transparent opacity={0.025 + intensity * 0.08} />
+    </mesh>
+  )
+}

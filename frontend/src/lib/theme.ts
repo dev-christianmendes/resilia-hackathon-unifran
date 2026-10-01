@@ -15,15 +15,28 @@ export const RISK_LABELS: Record<RiskLevel, string> = {
 export const SCENARIO_META = {
   extreme_rain: {
     label: 'Chuva extrema',
-    icon: '🌧',
     description: 'Alagamentos, bloqueio de vias e isolamento de regiões.',
     effect: 'Efeito na cena: chuva intensa e áreas alagadas',
   },
   heat_wave: {
     label: 'Onda de calor',
-    icon: '🔥',
     description: 'Exposição térmica, baixa cobertura vegetal e pressão sobre a saúde.',
-    effect: 'Efeito na cena: sombreamento vermelho e solo ressecado',
+    effect: 'Efeito na cena: calor e exposição térmica',
+  },
+  hailstorm: {
+    label: 'Granizo',
+    description: 'Danos a coberturas, edificações e equipamentos expostos.',
+    effect: 'Efeito na cena: exposição de edificações',
+  },
+  windstorm: {
+    label: 'Ventania',
+    description: 'Queda de árvores, bloqueio de vias e danos a edificações.',
+    effect: 'Efeito na cena: rajadas e vias obstruídas',
+  },
+  wildfire: {
+    label: 'Queimada de grande porte',
+    description: 'Vegetação seca, fumaça e isolamento de regiões.',
+    effect: 'Efeito na cena: áreas com maior carga de combustível',
   },
 } as const
 
@@ -33,41 +46,41 @@ export const INTERVENTION_META: Record<
 > = {
   green_area: {
     label: 'Área verde',
-    icon: '🌿',
+    icon: '',
     color: '#22c55e',
     description: 'Aumenta a cobertura vegetal e a permeabilidade do solo.',
   },
   reservoir: {
     label: 'Reservatório',
-    icon: '🟦',
+    icon: '',
     color: '#38bdf8',
     description: 'Acumula o excedente de escoamento e reduz o pico de vazão.',
   },
   shelter: {
     label: 'Abrigo',
-    icon: '🏕',
+    icon: '',
     color: '#f472b6',
     description: 'Reduz a população diretamente exposta dentro da região.',
   },
   alternate_route: {
     label: 'Rota alternativa',
-    icon: '🛣',
+    icon: '',
     color: '#a78bfa',
     description: 'Desvia o tráfego das vias expostas durante o evento.',
   },
   care_post: {
     label: 'Ponto de atendimento',
-    icon: '🏥',
+    icon: '',
     color: '#fbbf24',
     description: 'Distribui a demanda sobre os equipamentos de saúde da região.',
   },
 }
 
 export const FACILITY_META: Record<string, { label: string; color: string; icon: string }> = {
-  hospital: { label: 'Hospital', color: '#ef4444', icon: '🏥' },
-  emergency_base: { label: 'Base de emergência', color: '#f97316', icon: '🚨' },
-  health_center: { label: 'UBS', color: '#fbbf24', icon: '⚕️' },
-  school: { label: 'Escola', color: '#38bdf8', icon: '🏫' },
+  hospital: { label: 'Hospital', color: '#ef4444', icon: '' },
+  emergency_base: { label: 'Base de emergência', color: '#f97316', icon: '' },
+  health_center: { label: 'UBS', color: '#fbbf24', icon: '' },
+  school: { label: 'Escola', color: '#38bdf8', icon: '' },
 }
 
 export const DEFAULT_LAYERS: Record<LayerKey, boolean> = {

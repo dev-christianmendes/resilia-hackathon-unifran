@@ -650,6 +650,16 @@ def _build_regions(
         documented_severity = max((item["severity"] for item in documented), default=0.0)
 
         proximity = max(0.0, 1.0 - nearest_channel / 1200.0)
+        drainage_clogging = round(
+            min(
+                1.0,
+                0.35 * impermeability
+                + 0.30 * documented_severity
+                + 0.20 * density_index
+                + 0.15 * proximity,
+            ),
+            3,
+        )
         slope_drainage = max(0.0, 1.0 - mean_slope / 14.0)
         low_relief = max(0.0, 1.0 - relief / 60.0)
         flood_risk = min(
@@ -680,6 +690,7 @@ def _build_regions(
                     population_density=0.0,
                     vegetation_index=round(vegetation, 3),
                     impermeability=impermeability,
+                    drainage_clogging=drainage_clogging,
                     flood_risk=round(flood_risk, 3),
                     heat_exposure=round(heat_exposure, 3),
                     elevation_m=round(mean_elevation, 1),

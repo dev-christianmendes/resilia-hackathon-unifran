@@ -1,4 +1,9 @@
-export type ScenarioType = 'extreme_rain' | 'heat_wave'
+export type ScenarioType =
+  | 'extreme_rain'
+  | 'heat_wave'
+  | 'hailstorm'
+  | 'windstorm'
+  | 'wildfire'
 
 export type InterventionType =
   | 'green_area'
@@ -34,6 +39,7 @@ export interface RegionMetrics {
   population_density: number
   vegetation_index: number
   impermeability: number
+  drainage_clogging: number
   flood_risk: number
   heat_exposure: number
   elevation_m: number
