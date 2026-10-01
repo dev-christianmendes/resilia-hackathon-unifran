@@ -1,6 +1,6 @@
 from conftest import intervention, scenario_heat, scenario_rain
 
-from app.ai.copilot import analyze
+from app.ai.copilot import _price, analyze
 from app.data import get_city
 from app.engine.simulation import run_simulation
 from app.schemas import CopilotRequest, InterventionType
@@ -103,21 +103,33 @@ def test_a_generous_budget_keeps_the_rule_based_suggestion():
 def test_a_tight_budget_replaces_an_unaffordable_suggestion():
     """Silently swapping the project would not be a recommendation."""
     city = get_city()
-    unconstrained = analyze(
-        city, CopilotRequest(scenario=scenario_rain(0.8, 0.6), interventions=[])
+    scenario = scenario_rain(0.8, 0.6)
+    unconstrained = analyze(city, CopilotRequest(scenario=scenario, interventions=[]))
+    routine = unconstrained.analysis.suggested_intervention
+
+    # Derive a budget too small for the routine suggestion yet still enough for
+    # a cheaper option, instead of assuming some fraction happens to work.
+    exposed = next(
+        r.affected_population
+        for r in run_simulation(city, scenario, [], "baseline").regions
+        if r.region_id == unconstrained.analysis.region_id
     )
-    price = unconstrained.analysis.estimated_cost_brl
+    prices = sorted(
+        _price(city, unconstrained.analysis.region_id, kind, scenario, exposed)
+        for kind in InterventionType
+    )
+    cheaper = [p for p in prices if p < unconstrained.analysis.estimated_cost_brl]
+    assert cheaper, "no cheaper intervention to fall back on"
+    affordable_budget = max(cheaper)
 
     response = analyze(
         city,
-        CopilotRequest(scenario=scenario_rain(0.8, 0.6), interventions=[], budget_brl=price * 0.6),
+        CopilotRequest(scenario=scenario, interventions=[], budget_brl=affordable_budget),
     )
-    assert response.analysis.estimated_cost_brl <= price * 0.6
-    assert response.analysis.suggested_intervention != (
-        unconstrained.analysis.suggested_intervention
-    )
+    assert response.analysis.suggested_intervention != routine
+    assert response.analysis.estimated_cost_brl <= affordable_budget
+    assert response.analysis.region_id == unconstrained.analysis.region_id
     assert "ultrapassa o orçamento" in response.answer
-    assert str(unconstrained.analysis.region_id) == response.analysis.region_id
 
 
 def test_an_impossible_budget_says_so_instead_of_pretending():

@@ -16,9 +16,17 @@ exposed region is, which is the opposite of what a budget expresses.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
-from app.schemas import InterventionType, Region
+from app.schemas import (
+    CityModel,
+    Intervention,
+    InterventionType,
+    Region,
+    ScenarioParams,
+    SimulationResult,
+)
 
 
 @dataclass(frozen=True)
@@ -167,13 +175,15 @@ def quantity_for(
         return min(RESERVOIR_CAP_M3, runoff_m3)
 
     if kind is InterventionType.SHELTER:
-        return min(SHELTER_CAP_BEDS, max(1.0, affected_population * SHELTER_COVERAGE))
+        return min(SHELTER_CAP_BEDS, max(1.0, round(affected_population * SHELTER_COVERAGE)))
 
     if kind is InterventionType.ALTERNATE_ROUTE:
         metres = max(METRES_PER_ROAD, region.road_count * METRES_PER_ROAD)
         return min(ROUTE_CAP_KM, max(0.6, metres / 1000.0))
 
-    return min(CARE_POST_CAP, max(1.0, affected_population / PEOPLE_PER_CARE_POST))
+    # A post serves a fixed number of people. Half a post is not a thing you can
+    # build, so round up before the cap.
+    return min(CARE_POST_CAP, max(1.0, math.ceil(affected_population / PEOPLE_PER_CARE_POST)))
 
 
 def cost_for(
@@ -187,13 +197,53 @@ def cost_for(
 
     A weaker intervention is proportionally less work but never free, which is
     why the scaling is ``0.55 + 0.45 * impact_factor`` and not a bare product.
+
+    The returned ``quantity`` is the physical work in the model's unit, not the
+    discounted figure used to price it: a rationale that says "1.500 m3" must
+    mean 1.500 m3 of reservoir, whatever the impact factor was.
     """
     model = COSTS[kind]
     quantity = quantity_for(kind, region, scenario_intensity, affected_population)
-    scaled = quantity * (0.55 + 0.45 * impact_factor)
-    cost = model.unit_cost_brl * scaled
+    cost = model.unit_cost_brl * quantity * (0.55 + 0.45 * impact_factor)
     cost = max(model.minimum_brl, min(model.maximum_brl, cost))
-    return round(cost, 2), round(scaled, 2)
+    return round(cost, 2), round(quantity, 2)
+
+
+def price_interventions(
+    city: CityModel,
+    scenario: ScenarioParams,
+    baseline: SimulationResult,
+    interventions: list[Intervention],
+) -> list[Intervention]:
+    """Fill in the cost of every intervention the client did not price.
+
+    Sizing uses the baseline exposure, not the mitigated one: the work is sized
+    against the problem being solved, and pricing it against the result it
+    produces would make every intervention look cheaper the better it worked.
+
+    An explicit ``cost_brl`` is respected, so a proposal shown at a given price
+    keeps that price when the user applies it.
+    """
+    exposed = {r.region_id: r.affected_population for r in baseline.regions}
+    regions = {r.id: r for r in city.regions}
+    priced: list[Intervention] = []
+    for intervention in interventions:
+        if intervention.cost_brl > 0:
+            priced.append(intervention)
+            continue
+        region = regions.get(intervention.region_id)
+        if region is None:
+            priced.append(intervention)
+            continue
+        cost, _ = cost_for(
+            intervention.type,
+            region,
+            scenario.intensity,
+            exposed.get(intervention.region_id, 0),
+            intervention.impact_factor,
+        )
+        priced.append(intervention.model_copy(update={"cost_brl": cost}))
+    return priced
 
 
 def catalogue() -> list[dict[str, object]]:

@@ -227,3 +227,93 @@ def test_unknown_scenario_type_is_rejected():
 def test_scenarios_catalogue():
     items = client.get("/api/scenarios").json()
     assert {item["type"] for item in items} == {"extreme_rain", "heat_wave"}
+
+
+def test_run_prices_interventions_the_client_left_unpriced():
+    """The client cannot price works; a total of R$ 0 would be a lie."""
+    scenario = ScenarioParams(type=ScenarioType.EXTREME_RAIN, intensity=0.8, duration=0.6)
+    region = client.get("/api/city").json()["regions"][0]
+    payload = {
+        "scenario": scenario.model_dump(),
+        "interventions": [
+            {
+                "id": "int-1",
+                "type": "shelter",
+                "region_id": region["id"],
+                "location": region["centroid"],
+                "impact_factor": 0.75,
+            }
+        ],
+    }
+    result = client.post("/api/run", json=payload).json()
+    assert result["total_cost_brl"] > 0
+
+
+def test_run_keeps_a_price_the_client_supplied():
+    """A proposal shown at a price must not be repriced when it is applied."""
+    scenario = ScenarioParams(type=ScenarioType.EXTREME_RAIN, intensity=0.8, duration=0.6)
+    region = client.get("/api/city").json()["regions"][0]
+    base = {
+        "id": "int-1",
+        "type": "shelter",
+        "region_id": region["id"],
+        "location": region["centroid"],
+        "impact_factor": 0.75,
+    }
+    unpriced = client.post(
+        "/api/run", json={"scenario": scenario.model_dump(), "interventions": [base]}
+    ).json()["total_cost_brl"]
+
+    priced = client.post(
+        "/api/run",
+        json={
+            "scenario": scenario.model_dump(),
+            "interventions": [{**base, "cost_brl": 1_234.56}],
+        },
+    ).json()
+    assert priced["total_cost_brl"] == 1_234.56
+    assert priced["total_cost_brl"] != unpriced
+
+
+def test_optimized_portfolio_reprices_to_the_same_total_through_run():
+    """What the optimizer promises and what /api/run charges must agree."""
+    scenario = ScenarioParams(type=ScenarioType.EXTREME_RAIN, intensity=0.8, duration=0.6)
+    body = {"scenario": scenario.model_dump(), "budget_brl": 5_000_000, "max_interventions": 8}
+    optimized = client.post("/api/optimize", json=body).json()
+    assert optimized["selected"], "optimizer returned nothing to check"
+
+    replayed = client.post(
+        "/api/run",
+        json={
+            "scenario": scenario.model_dump(),
+            # Strip the prices, exactly as the UI's apply step does.
+            "interventions": [
+                {
+                    "id": f"int-{index}",
+                    "type": p["type"],
+                    "region_id": p["region_id"],
+                    "location": p["location"],
+                    "impact_factor": p["impact_factor"],
+                }
+                for index, p in enumerate(optimized["selected"])
+            ],
+            "budget_brl": 5_000_000,
+        },
+    ).json()
+
+    assert replayed["total_cost_brl"] == optimized["spent_brl"]
+    assert (
+        replayed["mitigated"]["totals"]["affected_population"]
+        == (optimized["projected_totals"]["affected_population"])
+    )
+    assert replayed["within_budget"] is True
+
+
+def test_costs_catalogue_reports_every_publishable_field():
+    rows = client.get("/api/costs/catalogue").json()
+    priced = [row for row in rows if row["type"] != "notice"]
+    for row in priced:
+        assert row["unit_label"]
+        assert row["unit"]
+        assert row["unit_cost_brl"] > 0
+    assert len({row["type"] for row in priced}) == len(priced), "duplicate cost rows"

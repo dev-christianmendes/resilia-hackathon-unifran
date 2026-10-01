@@ -202,3 +202,35 @@ def test_response_publishes_the_cost_assumptions():
     assert "hipótese" in result.cost_assumptions.lower()
     assert ASSUMPTION_NOTICE
     assert result.disclaimer
+
+
+def test_quantities_are_physical_work_not_the_discounted_figure():
+    """A rationale saying "1.500 m3" must mean 1.500 m3 of reservoir."""
+    city = get_city()
+    region = next(r for r in city.regions if r.road_count > 0)
+
+    # A weaker intervention costs less but is not a smaller building.
+    strong_cost, strong_qty = cost_for(InterventionType.SHELTER, region, 0.8, 40_000, 1.0)
+    weak_cost, weak_qty = cost_for(InterventionType.SHELTER, region, 0.8, 40_000, 0.2)
+    assert strong_cost > weak_cost
+    assert strong_qty == weak_qty
+
+    # And the reported quantity is the physical size, not the discounted figure.
+    assert strong_qty == quantity_for(InterventionType.SHELTER, region, 0.8, 40_000)
+
+
+def test_whole_units_are_whole_numbers():
+    """Half a shelter bed or a third of a care post cannot be built."""
+    city = get_city()
+    for region in city.regions:
+        for kind in (InterventionType.SHELTER, InterventionType.CARE_POST):
+            quantity = quantity_for(kind, region, 0.8, region.metrics.population)
+            assert quantity == int(quantity), f"{kind.value} sized to {quantity}"
+            assert quantity >= 1.0
+
+
+def test_care_post_rounds_up_rather_than_below_one():
+    city = get_city()
+    for region in city.regions:
+        # Even a lightly exposed region gets at least one post.
+        assert quantity_for(InterventionType.CARE_POST, region, 0.1, 1) == 1.0

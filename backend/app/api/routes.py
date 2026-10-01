@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.ai.copilot import analyze
 from app.data import get_city
 from app.engine.costs import catalogue as cost_catalogue
+from app.engine.costs import price_interventions
 from app.engine.interventions import catalogue, normalize
 from app.engine.optimize import optimize
 from app.engine.simulation import compare, run_simulation
@@ -57,8 +58,10 @@ def run(payload: RunRequest) -> RunResponse:
     halves together removes that race by construction.
     """
     city_model = get_city()
-    interventions = [normalize(i) for i in payload.interventions]
     baseline = run_simulation(city_model, payload.scenario, [], "baseline")
+    interventions = price_interventions(
+        city_model, payload.scenario, baseline, [normalize(i) for i in payload.interventions]
+    )
     mitigated = (
         run_simulation(city_model, payload.scenario, interventions, "mitigated")
         if interventions

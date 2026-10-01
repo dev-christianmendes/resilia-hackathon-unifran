@@ -222,13 +222,16 @@ def _fit_to_budget(
     work the same budget does buy in the same region, because a recommendation
     that quietly swaps the project is not a recommendation.
     """
-    if budget_brl is None:
-        return suggestion, _price(city, region_id, suggestion, scenario, 0), ""
-
     region_result = next(r for r in result.regions if r.region_id == region_id)
+    # Always price against the exposure the engine reported for this region. The
+    # people-serving types size on it, so a price built on anything else would
+    # not be the same number once a budget arrives.
     suggested_cost = _price(
         city, region_id, suggestion, scenario, region_result.affected_population
     )
+    if budget_brl is None:
+        return suggestion, suggested_cost, ""
+
     if suggested_cost <= budget_brl:
         return suggestion, suggested_cost, ""
 
