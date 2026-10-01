@@ -20,7 +20,12 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from app.engine.simulation import INTERVENTION_LABELS, compare, run_simulation
+from app.engine.simulation import (
+    FACTOR_LABELS,
+    INTERVENTION_LABELS,
+    compare,
+    run_simulation,
+)
 from app.schemas import (
     CityModel,
     CopilotFactor,
@@ -97,17 +102,14 @@ FOLLOW_UPS = [
     "Quais equipamentos críticos estão mais expostos?",
 ]
 
+# Detail the engine's canonical factor names do not carry. Everything else comes
+# from app.engine.simulation.FACTOR_LABELS, so a factor has one name in the
+# product instead of one per module.
 FACTOR_DETAIL: dict[str, str] = {
     "drainage_deficit": "impermeabilidade do solo combinada à cobertura vegetal",
-    "terrain_susceptibility": "susceptibilidade do terreno a alagamentos",
-    "social_vulnerability": "vulnerabilidade social da população",
     "runoff": "escoamento superficial gerado pela chuva",
-    "hazard": "intensidade e duração do evento",
     "storage_capacity": "capacidade de armazenamento de água existente",
-    "shade_deficit": "deficit de sombra e cobertura vegetal",
-    "thermal_mass": "capacidade de retenção de calor do solo",
     "heat_exposure": "exposição térmica histórica da região",
-    "heat_load": "carga térmica acumulada no cenário",
 }
 
 # Dominant factor -> intervention that addresses it. Ordered by specificity, and
@@ -190,7 +192,7 @@ def _build_recommendation(
             CopilotFactor(
                 label=key,
                 weight=round(weight / weight_total, 3),
-                detail=FACTOR_DETAIL.get(key, key),
+                detail=FACTOR_DETAIL.get(key, FACTOR_LABELS.get(key, key)),
             )
             for key, weight in top
         ]
@@ -251,7 +253,9 @@ def _build_recommendation(
 
 
 def _describe(factors: list[CopilotFactor]) -> str:
-    return ", ".join(FACTOR_DETAIL.get(f.label, f.label) for f in factors[:3])
+    return ", ".join(
+        FACTOR_DETAIL.get(f.label, FACTOR_LABELS.get(f.label, f.label)) for f in factors[:3]
+    )
 
 
 def _context(

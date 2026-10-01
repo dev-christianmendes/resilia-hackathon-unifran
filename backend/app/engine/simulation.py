@@ -62,6 +62,22 @@ INTERVENTION_LABELS: dict[InterventionType, str] = {
     InterventionType.CARE_POST: "Ponto de atendimento",
 }
 
+# Portuguese names for the keys in RegionResult.factors. Defined beside the
+# builders that emit them so a new factor cannot be published unnamed.
+FACTOR_LABELS: dict[str, str] = {
+    "hazard": "intensidade e duração do evento",
+    "drainage_deficit": "déficit de drenagem pela impermeabilidade do solo",
+    "storage_capacity": "capacidade de armazenamento de água",
+    "terrain_susceptibility": "susceptibilidade do terreno a alagamentos",
+    "social_vulnerability": "vulnerabilidade social da população",
+    "susceptibility": "susceptibilidade combinada",
+    "runoff": "escoamento superficial",
+    "shade_deficit": "déficit de sombra e cobertura vegetal",
+    "thermal_mass": "capacidade de retenção de calor do solo",
+    "heat_exposure": "exposição térmica da região",
+    "heat_load": "carga térmica do cenário",
+}
+
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, value))
@@ -125,13 +141,19 @@ def _distribute(
     city: CityModel, interventions: list[Intervention]
 ) -> dict[str, list[Intervention]]:
     """Spread each intervention to neighbouring regions with a decayed strength."""
-    neighbours = _adjacency(city)
     by_region: dict[str, list[Intervention]] = {}
     for intervention in interventions:
         by_region.setdefault(intervention.region_id, []).append(intervention)
+
+    # Adjacency is an O(regions^2) scan, so it is only worth building when some
+    # works actually spill. A baseline run has nothing to spread.
+    spilling = [i for i in interventions if SPILLOVER[i.type] > 0]
+    if not spilling:
+        return by_region
+
+    neighbours = _adjacency(city)
+    for intervention in spilling:
         decay = SPILLOVER[intervention.type]
-        if decay <= 0:
-            continue
         for neighbour_id in neighbours.get(intervention.region_id, []):
             by_region.setdefault(neighbour_id, []).append(
                 intervention.model_copy(
@@ -257,8 +279,13 @@ def _region_result(
     scenario: ScenarioParams,
     interventions: list[Intervention],
     hazard: float,
-    baseline_risk: float,
 ) -> RegionResult:
+    """Build one region result. ``baseline_risk`` is filled in by the caller.
+
+    A region that receives no work, direct or spilled, has the same risk with
+    and without mitigation, so the caller reuses this run's own risk instead of
+    paying for a second identical factor computation.
+    """
     effective, applied = _effective_metrics(region, interventions)
     if scenario.type is ScenarioType.EXTREME_RAIN:
         factors = _rain_factors(region, effective, hazard)
@@ -288,7 +315,7 @@ def _region_result(
         region_id=region.id,
         risk=_round(risk),
         risk_level=risk_level_of(risk),
-        baseline_risk=_round(baseline_risk),
+        baseline_risk=_round(risk),
         affected_population=affected,
         compromised_roads=compromised,
         critical_facilities_affected=critical_affected,
@@ -309,10 +336,11 @@ def run_simulation(
 
     results: list[RegionResult] = []
     for region in city.regions:
-        baseline_risk = _baseline_risk(city, scenario, region.id, hazard)
-        results.append(
-            _region_result(region, scenario, by_region.get(region.id, []), hazard, baseline_risk)
-        )
+        applied = by_region.get(region.id, [])
+        result = _region_result(region, scenario, applied, hazard)
+        if applied:
+            result.baseline_risk = _round(_baseline_risk(city, scenario, region.id, hazard))
+        results.append(result)
 
     totals = SimulationTotals(
         affected_population=sum(r.affected_population for r in results),

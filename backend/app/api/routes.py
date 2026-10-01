@@ -2,13 +2,19 @@ from fastapi import APIRouter
 
 from app.ai.copilot import analyze
 from app.data import get_city
+from app.engine.costs import catalogue as cost_catalogue
 from app.engine.interventions import catalogue, normalize
+from app.engine.optimize import optimize
 from app.engine.simulation import compare, run_simulation
 from app.schemas import (
     CityModel,
     CompareRequest,
     CopilotRequest,
     CopilotResponse,
+    OptimizeRequest,
+    OptimizeResponse,
+    RunRequest,
+    RunResponse,
     SimulateRequest,
     SimulationComparison,
     SimulationResult,
@@ -30,6 +36,50 @@ def city() -> CityModel:
 @router.get("/interventions/catalogue")
 def interventions_catalogue() -> list[dict[str, object]]:
     return catalogue()
+
+
+@router.get("/costs/catalogue")
+def costs_catalogue() -> list[dict[str, object]]:
+    """Unit prices and sizing caps behind every budget figure, published.
+
+    The optimiser is only as trustworthy as these assumptions, so they are
+    served next to the numbers they produce instead of hiding in the code.
+    """
+    return cost_catalogue()
+
+
+@router.post("/run", response_model=RunResponse)
+def run(payload: RunRequest) -> RunResponse:
+    """Baseline and mitigated results in one response.
+
+    The UI used to call /simulate and /compare in parallel, which could paint a
+    mitigated result beside a baseline from a different request. Returning both
+    halves together removes that race by construction.
+    """
+    city_model = get_city()
+    interventions = [normalize(i) for i in payload.interventions]
+    baseline = run_simulation(city_model, payload.scenario, [], "baseline")
+    mitigated = (
+        run_simulation(city_model, payload.scenario, interventions, "mitigated")
+        if interventions
+        else baseline
+    )
+    total_cost = round(sum(i.cost_brl for i in interventions), 2)
+
+    return RunResponse(
+        scenario=payload.scenario,
+        baseline=baseline,
+        mitigated=mitigated,
+        comparison=compare(city_model, payload.scenario, interventions),
+        total_cost_brl=total_cost,
+        budget_brl=payload.budget_brl,
+        within_budget=payload.budget_brl is None or total_cost <= payload.budget_brl,
+    )
+
+
+@router.post("/optimize", response_model=OptimizeResponse)
+def optimize_interventions(payload: OptimizeRequest) -> OptimizeResponse:
+    return optimize(get_city(), payload)
 
 
 @router.post("/simulate", response_model=SimulationResult)

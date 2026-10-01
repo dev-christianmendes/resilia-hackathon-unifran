@@ -358,6 +358,14 @@ class OptimizeResponse(BaseModel):
     budget_brl: float
     spent_brl: float
     remaining_brl: float
+    binding_constraint: Literal["budget", "max_interventions"] = Field(
+        default="budget",
+        description=(
+            "Qual limite parou a seleção. Importa para ler o saldo: sobra de "
+            "orçamento com 'max_interventions' significa que vale pedir mais "
+            "intervenções, não que o dinheiro sobrou sem uso."
+        ),
+    )
     baseline_totals: SimulationTotals
     projected_totals: SimulationTotals
     affected_population_avoided: int
@@ -365,9 +373,13 @@ class OptimizeResponse(BaseModel):
     selected: list[ProposedIntervention]
     rejected_budget: list[ProposedIntervention]
     method: str = "knapsack-gain-per-real"
+    cost_assumptions: str = (
+        "Custos são hipóteses de ordem de grandeza, não cotações. "
+        "Substitua app/engine/costs.py pelo orçamento real antes de decidir."
+    )
     disclaimer: str = (
         "Estimativa do modelo da POC sob restrição orçamentária. "
-        "Não substitui estudo de dimensionamento nem/licitação de obra."
+        "Não substitui estudo de dimensionamento nem licitação de obra."
     )
 
 
