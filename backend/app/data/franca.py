@@ -189,6 +189,47 @@ def _project_ring(
     return [projection.to_xy(lat, lng) for lat, lng in ring]
 
 
+def _build_boundary(projection: LocalProjection) -> list[Point]:
+    """Municipal outline, projected onto the same plane as every other layer.
+
+    The IBGE malha arrives as GeoJSON lon/lat. Publishing it in the local plane
+    lets the 3D scene draw the city edge and lets a client clip or measure
+    against the real limit without a second projection.
+
+    The GeoJSON ring repeats its first vertex to close itself; that duplicate
+    is dropped here, matching how :class:`~app.schemas.Region` polygons are
+    published, so a consumer can close the loop without repeating a point.
+    """
+    raw = _load("boundary") or {}
+    ring = raw.get("coordinates") or []
+    if len(ring) >= 2 and ring[0] == ring[-1]:
+        ring = ring[:-1]
+    if len(ring) < 3:
+        return []
+    return [_to_point(projection, x, y) for x, y in _project_ring(projection, ring)]
+
+
+def _flag_regions_outside_municipality(regions: list[Region], boundary: list[Point]) -> None:
+    """Mark the sub-basins that the rectangular DEM window pushes out of town.
+
+    The modelled window is a lat/lng rectangle picked to fit the terrain tiles,
+    while the municipality is an irregular outline, so the corners of that
+    rectangle fall outside Franca. Those sub-basins are not clipped away: a
+    catchment is a hydrological unit and cutting it along an administrative
+    line would distort the very partition the model is built on. Instead the
+    region carries ``within_municipality=False`` so no client presents it as
+    part of the city.
+    """
+    if len(boundary) < 3:
+        return
+    ring = [(point.x, point.y) for point in boundary]
+    for region in regions:
+        probes = [(region.centroid.x, region.centroid.y)]
+        probes += [(point.x, point.y) for point in region.polygon]
+        if any(not point_in_ring(x, y, ring) for x, y in probes):
+            region.within_municipality = False
+
+
 # --------------------------------------------------------------------------- #
 # watercourses
 # --------------------------------------------------------------------------- #
@@ -1092,6 +1133,9 @@ def get_franca_city() -> CityModel:
         if not region.facilities:
             region.facilities = []
 
+    boundary = _build_boundary(projection)
+    _flag_regions_outside_municipality(regions, boundary)
+
     return CityModel(
         id="franca-sp",
         name="Franca/SP",
@@ -1108,6 +1152,7 @@ def get_franca_city() -> CityModel:
             "max_x": grid.max_x,
             "max_y": grid.max_y,
         },
+        boundary=boundary,
         regions=regions,
         roads=roads,
         waterways=waterways,

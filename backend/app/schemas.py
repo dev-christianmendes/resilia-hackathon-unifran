@@ -197,6 +197,14 @@ class Region(BaseModel):
     metrics: RegionMetrics
     road_count: int = 0
     facilities: list[Facility] = Field(default_factory=list)
+    within_municipality: bool = Field(
+        default=True,
+        description=(
+            "Falso quando algum vértice ou o centroide cai fora do limite do IBGE. "
+            "A janela do DEM é um retângulo e o município não é retangular, então "
+            "algumas sub-bacias da borda extrapolam o território."
+        ),
+    )
 
 
 class CityModel(BaseModel):
@@ -205,6 +213,13 @@ class CityModel(BaseModel):
     ibge_code: str | None = None
     crs: CoordinateReferenceSystem
     bounds: dict[str, float]
+    boundary: list[Point] = Field(
+        default_factory=list,
+        description=(
+            "Limite municipal em anel fechado, no mesmo plano local das demais "
+            "camadas. Lista vazia apenas quando a fonte não foi ingerida."
+        ),
+    )
     regions: list[Region]
     roads: list[Road]
     waterways: list[Waterway] = Field(default_factory=list)

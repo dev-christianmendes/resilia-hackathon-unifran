@@ -3,7 +3,7 @@
 Gerado por `python -m scripts.fetch_franca_data`. Não editar à mão:
 reexecute o script para atualizar os dados e a data de coleta.
 
-Coletado em: 2026-10-01 19:46:19 (UTC)
+Coletado em: 2026-10-01 20:17:07 (UTC)
 
 | Camada | Provedor | Dataset | Licença |
 | --- | --- | --- | --- |
@@ -27,6 +27,8 @@ Coletado em: 2026-10-01 19:46:19 (UTC)
 - **Equipamentos publicos**: 131 elements
 - **Celulas do DEM**: 256x288 cells
 - **Pontos vulneraveis**: 5/5 resolvidos
+- **Area do municipio**: 605,679 km2 (IBGE Malhas)
+- **Area modelada**: 32,4% do municipio (janela URBAN_BBOX)
 
 ## Relevo
 
@@ -45,12 +47,23 @@ o texto em `evidence` é a transcrição da fonte.
 As regiões do twin são **sub-bacias hidrográficas**, não bairros: Franca
 não tem divisão territorial oficial publicada pelo IBGE.
 
+**O modelo cobre 32,4% da área do município.** O limite do IBGE
+tem 605,679 km², mas o DEM e todas as camadas derivadas são recortados pela
+janela urbana em `URBAN_BBOX`. As sub-bacias são, portanto, as sub-bacias
+que caem nessa janela, não a partição territorial do município.
+
 - A população é rateada pela densidade real de edificações (OSM) e cada
   região carrega `population_is_estimated: true`. A soma fecha com o total
   municipal por construção, o que pressupõe que toda a população do
-  município está dentro do bbox modelado — falso para a periferia.
+  município está dentro da janela modelada (32,4% da área).
+  A periferia não é representada: ler as sub-bacias como cobertura do
+  município inteiro superestima a densidade em todo o território.
 - A vulnerabilidade social é um proxy por densidade de tecido urbano,
   não renda por setor censitário, que não está disponível aqui.
+- A janela do DEM é um retângulo e o município não é: os cantos dela
+  caem fora de Franca. As sub-bacias afetadas não são recortadas, porque
+  uma bacia é unidade hidrológica e cortá-la por linha administrativa
+  distorceria a partição. Elas carregam `within_municipality: false`.
 - A impermeabilidade usa comprimento de rua por km2 como aproximação de
   área selada, porque a cobertura de edificações do OSM é esparsa.
 - `landuse_coverage` informa quanto da região o OSM mapeia; os índices de

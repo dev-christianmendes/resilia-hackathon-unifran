@@ -300,6 +300,76 @@ def in_bbox(lat: float, lng: float, bbox: dict[str, float] | None = None) -> boo
     return box["min_lat"] <= lat <= box["max_lat"] and box["min_lng"] <= lng <= box["max_lng"]
 
 
+def ring_area_m2(ring: list[list[float]]) -> float:
+    """Shoelace area of a closed lon/lat ring, projected locally first."""
+    projected = [project(lat, lng) for lat, lng in ring]
+    total = 0.0
+    count = len(projected)
+    for i in range(count):
+        x1, y1 = projected[i]
+        x2, y2 = projected[(i + 1) % count]
+        total += x1 * y2 - x2 * y1
+    return abs(total) / 2.0
+
+
+def modelled_coverage_pct(ring: list[list[float]]) -> float:
+    """Share of the municipality that falls inside the modelled DEM window.
+
+    The DEM and every derived layer are clipped to URBAN_BBOX, while the IBGE
+    municipal outline is the whole territory. Publishing the ratio turns a
+    silent mismatch into a stated limitation.
+    """
+    municipality = ring_area_m2(ring)
+    if municipality <= 0:
+        return 0.0
+    window = [
+        project(URBAN_BBOX["min_lat"], URBAN_BBOX["min_lng"]),
+        project(URBAN_BBOX["min_lat"], URBAN_BBOX["max_lng"]),
+        project(URBAN_BBOX["max_lat"], URBAN_BBOX["max_lng"]),
+        project(URBAN_BBOX["max_lat"], URBAN_BBOX["min_lng"]),
+    ]
+    min_x = min(x for x, _ in window)
+    max_x = max(x for x, _ in window)
+    min_y = min(y for _, y in window)
+    max_y = max(y for _, y in window)
+
+    # Sample the window on a lattice and keep the points the outline contains.
+    step = 60.0
+    cols = int((max_x - min_x) / step)
+    rows = int((max_y - min_y) / step)
+    if cols <= 0 or rows <= 0:
+        return 0.0
+
+    outline = [project(lat, lng) for lat, lng in ring]
+    inside = 0
+    for i in range(cols):
+        x = min_x + (i + 0.5) * step
+        for j in range(rows):
+            y = min_y + (j + 0.5) * step
+            if point_in_ring(x, y, outline):
+                inside += 1
+    covered = inside * step * step
+    return round(covered / municipality * 100.0, 1)
+
+
+def pt_pct(value: float) -> str:
+    """Percent with a comma, matching the pt-BR text of SOURCES.md."""
+    return f"{value:.1f}".replace(".", ",")
+
+
+def point_in_ring(x: float, y: float, ring: list[tuple[float, float]]) -> bool:
+    inside = False
+    count = len(ring)
+    for i in range(count):
+        x1, y1 = ring[i]
+        x2, y2 = ring[(i + 1) % count]
+        if (y1 > y) != (y2 > y):
+            cut = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+            if x < cut:
+                inside = not inside
+    return inside
+
+
 def bbox_clause(bbox: dict[str, float] | None = None) -> str:
     box = bbox or URBAN_BBOX
     return f"({box['min_lat']},{box['min_lng']},{box['max_lat']},{box['max_lng']})"
@@ -646,7 +716,9 @@ def dump(name: str, payload: Any) -> None:
     print(f"  -> {path.relative_to(BACKEND)} ({size_kb:.0f} KB)")
 
 
-def write_sources(elevation_meta: dict[str, Any], counts: dict[str, int]) -> None:
+def write_sources(
+    elevation_meta: dict[str, Any], counts: dict[str, int], coverage_pct: float
+) -> None:
     FIXTURES.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Fontes dos dados de Franca/SP",
@@ -696,12 +768,23 @@ def write_sources(elevation_meta: dict[str, Any], counts: dict[str, int]) -> Non
         "As regiões do twin são **sub-bacias hidrográficas**, não bairros: Franca",
         "não tem divisão territorial oficial publicada pelo IBGE.",
         "",
+        f"**O modelo cobre {pt_pct(coverage_pct)}% da área do município.** O limite do IBGE",
+        "tem 605,679 km², mas o DEM e todas as camadas derivadas são recortados pela",
+        "janela urbana em `URBAN_BBOX`. As sub-bacias são, portanto, as sub-bacias",
+        "que caem nessa janela, não a partição territorial do município.",
+        "",
         "- A população é rateada pela densidade real de edificações (OSM) e cada",
         "  região carrega `population_is_estimated: true`. A soma fecha com o total",
         "  municipal por construção, o que pressupõe que toda a população do",
-        "  município está dentro do bbox modelado — falso para a periferia.",
+        f"  município está dentro da janela modelada ({pt_pct(coverage_pct)}% da área).",
+        "  A periferia não é representada: ler as sub-bacias como cobertura do",
+        "  município inteiro superestima a densidade em todo o território.",
         "- A vulnerabilidade social é um proxy por densidade de tecido urbano,",
         "  não renda por setor censitário, que não está disponível aqui.",
+        "- A janela do DEM é um retângulo e o município não é: os cantos dela",
+        "  caem fora de Franca. As sub-bacias afetadas não são recortadas, porque",
+        "  uma bacia é unidade hidrológica e cortá-la por linha administrativa",
+        "  distorceria a partição. Elas carregam `within_municipality: false`.",
         "- A impermeabilidade usa comprimento de rua por km2 como aproximação de",
         "  área selada, porque a cobertura de edificações do OSM é esparsa.",
         "- `landuse_coverage` informa quanto da região o OSM mapeia; os índices de",
@@ -943,6 +1026,12 @@ def main(force: bool) -> int:
     dump("metadata", {**IBGE_DEMOGRAPHY, "urban_bbox": URBAN_BBOX, "dem": elevation_meta})
 
     if elevation_meta:
+        coverage = 0.0
+        try:
+            stored = json.loads((FIXTURES / "boundary.json").read_text(encoding="utf-8"))
+            coverage = modelled_coverage_pct(stored["coordinates"])
+        except Exception as exc:  # noqa: BLE001
+            report.errors.append(f"coverage: {exc}")
         write_sources(
             elevation_meta,
             {
@@ -954,7 +1043,10 @@ def main(force: bool) -> int:
                 "Equipamentos publicos": report.layers.get("facilities", "?"),
                 "Celulas do DEM": report.layers.get("elevation", "?"),
                 "Pontos vulneraveis": report.layers.get("vulnerability_points", "?"),
+                "Area do municipio": "605,679 km2 (IBGE Malhas)",
+                "Area modelada": f"{pt_pct(coverage)}% do municipio (janela URBAN_BBOX)",
             },
+            coverage,
         )
 
     print("\n--- resumo ---")
