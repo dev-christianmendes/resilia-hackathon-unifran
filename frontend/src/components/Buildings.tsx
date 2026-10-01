@@ -25,12 +25,14 @@ export function Buildings({
     () =>
       buildings.map((building) => ({
         id: building.id,
+        // Negated like every other layer: the backend puts +y to the north, so
+        // mirroring Z keeps footprints inside their own sub-basin.
         position: [
           building.location.x * METERS_TO_UNITS,
           elevationToHeight(elevationById[building.region_id] ?? 0) +
             REGION_BASE +
             building.height * METERS_TO_UNITS * 0.5,
-          building.location.y * METERS_TO_UNITS,
+          -building.location.y * METERS_TO_UNITS,
         ] as [number, number, number],
         scale: [
           building.width * METERS_TO_UNITS,

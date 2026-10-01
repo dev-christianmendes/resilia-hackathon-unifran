@@ -30,6 +30,12 @@ export default function App() {
     selectedResult,
     resultsByRegion,
     stale,
+    budget,
+    setBudget,
+    optimizer,
+    optimize,
+    applyOptimizerResult,
+    costs,
   } = twin
   const [catalogue, setCatalogue] = useState<InterventionCatalogueItem[]>([])
   const [rightTab, setRightTab] = useState<'region' | 'copilot'>('region')
@@ -161,9 +167,17 @@ export default function App() {
             regions={city.regions}
             interventions={interventions}
             catalogue={catalogue}
+            costs={costs}
             placement={state.placement}
             hasSimulation={state.current !== null}
             busy={state.busy}
+            budget={budget}
+            optimizer={optimizer}
+            spentBrl={state.runTotals?.total_cost_brl ?? null}
+            withinBudget={state.runTotals?.within_budget ?? true}
+            onBudgetChange={setBudget}
+            onOptimize={() => void optimize()}
+            onApplyOptimizer={applyOptimizerResult}
             onStartPlacement={actions.startPlacement}
             onCancelPlacement={actions.cancelPlacement}
             onRemove={actions.removeIntervention}
@@ -176,6 +190,7 @@ export default function App() {
         <main className="relative min-h-0">
           <CityScene
             regions={city.regions}
+            boundary={city.boundary}
             buildings={city.buildings}
             roads={city.roads}
             trees={city.trees}

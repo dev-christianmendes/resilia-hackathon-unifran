@@ -114,3 +114,32 @@ export function formatSigned(value: number): string {
   const rounded = Math.round(value)
   return `${rounded > 0 ? '+' : ''}${numberFormat.format(rounded)}`
 }
+
+/** Money as the user reads it: R$ 1,2 mi rather than 1200000. */
+export function formatBRL(value: number): string {
+  const abs = Math.abs(value)
+  if (abs >= 1_000_000) {
+    return `R$ ${(value / 1_000_000).toLocaleString('pt-BR', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} mi`
+  }
+  if (abs >= 1_000) {
+    return `R$ ${(value / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} mil`
+  }
+  return `R$ ${value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
+}
+
+/**
+ * Starting budget for the mitigation step. Large enough to buy several
+ * neighbourhood-scale works, which is the size that actually moves the model.
+ */
+export const DEFAULT_BUDGET_BRL = 5_000_000
+
+/** Budget presets offered in the UI, in reais. */
+export const BUDGET_PRESETS = [
+  { value: 1_000_000, label: 'R$ 1 mi' },
+  { value: 5_000_000, label: 'R$ 5 mi' },
+  { value: 20_000_000, label: 'R$ 20 mi' },
+  { value: 50_000_000, label: 'R$ 50 mi' },
+]

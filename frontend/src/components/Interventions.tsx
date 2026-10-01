@@ -66,7 +66,13 @@ export function Interventions({ interventions, elevationById, onSelectRegion }: 
 }
 
 /** Pulsing marker shown while the user is choosing where to place an intervention. */
-export function PlacementGhost({ label }: { label: string }) {
+export function PlacementGhost({
+  label,
+  point,
+}: {
+  label: string
+  point: [number, number, number] | null
+}) {
   const group = useRef<Group>(null)
   useCursor(true)
 
@@ -78,7 +84,7 @@ export function PlacementGhost({ label }: { label: string }) {
   })
 
   return (
-    <group ref={group}>
+    <group ref={group} position={point ?? [0, -1000, 0]} visible={point !== null}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[3.2, 4.4, 32]} />
         <meshBasicMaterial color="#38bdf8" transparent opacity={0.75} side={2} />

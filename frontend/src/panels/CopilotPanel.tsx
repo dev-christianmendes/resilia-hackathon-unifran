@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { CopilotState } from '../state/useCityTwin'
-import { INTERVENTION_META, formatNumber } from '../lib/theme'
+import { INTERVENTION_META, formatBRL, formatNumber } from '../lib/theme'
 import { Button, Panel } from '../components/ui'
 
 const SUGGESTED_QUESTION = 'Onde devo priorizar uma intervenção neste cenário?'
@@ -101,6 +101,12 @@ export function CopilotPanel({
                 <Button variant="success" onClick={onApplySuggestion}>
                   SIMULAR
                 </Button>
+              </div>
+              <div className="mt-1 flex items-baseline justify-between gap-2 px-3 text-[11px] text-slate-400">
+                <span>Custo estimado</span>
+                <span className="font-mono text-slate-200">
+                  {formatBRL(copilot.analysis.estimated_cost_brl)}
+                </span>
               </div>
               <ExpectedEffect effect={copilot.analysis.expected_effect} />
             </div>

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import type {
@@ -6,6 +6,7 @@ import type {
   Facility,
   Intervention,
   LayerKey,
+  Point,
   Region,
   RegionResult,
   Road,
@@ -24,9 +25,13 @@ import { Terrain } from './Terrain'
 const REGION_BASE = METERS_TO_UNITS * 40
 /** Large enough to stay under the camera at any zoom level used by the demo. */
 const PLANE_SIZE = 400
+/** One shared height for the placement plane and its ghost, so the ring the
+ * user aims at is exactly the surface the click lands on. */
+const PLACEMENT_PLANE_Y = REGION_BASE + 4
 
 interface SceneProps {
   regions: Region[]
+  boundary: Point[]
   buildings: Building[]
   roads: Road[]
   trees: Tree[]
@@ -86,6 +91,7 @@ export function CityScene(props: SceneProps) {
 
 function CityContents({
   regions,
+  boundary,
   buildings,
   roads,
   trees,
@@ -128,6 +134,8 @@ function CityContents({
     return map
   }, [result])
 
+  const [placementPoint, setPlacementPoint] = useState<[number, number, number] | null>(null)
+
   const handleClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
       event.stopPropagation()
@@ -148,6 +156,7 @@ function CityContents({
     <group onClick={handleClick}>
       <Terrain
         regions={regions}
+        boundary={boundary}
         showRisk={layers.risk && hasResult}
         showCriticalAreas={layers.criticalAreas}
         showTerrain={layers.terrain}
@@ -235,19 +244,23 @@ function CityContents({
 
       {placement && (
         <>
-          <PlacementGhost label="a intervenção" />
+          <PlacementGhost label="a intervenção" point={placementPoint} />
           <mesh
             rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, REGION_BASE + 4, 0]}
+            position={[0, PLACEMENT_PLANE_Y, 0]}
+            onPointerMove={(event) => {
+              setPlacementPoint([event.point.x, PLACEMENT_PLANE_Y, event.point.z])
+            }}
+            onPointerOut={() => {
+              setPlacementPoint(null)
+              document.body.style.cursor = 'auto'
+            }}
             onClick={(event) => {
               event.stopPropagation()
               onPlace(event.point.x / METERS_TO_UNITS, -event.point.z / METERS_TO_UNITS)
             }}
             onPointerOver={() => {
               document.body.style.cursor = 'crosshair'
-            }}
-            onPointerOut={() => {
-              document.body.style.cursor = 'auto'
             }}
           >
             <planeGeometry args={[PLANE_SIZE, PLANE_SIZE]} />

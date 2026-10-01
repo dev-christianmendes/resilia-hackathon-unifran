@@ -1,6 +1,7 @@
 import type {
   City,
   Intervention,
+  RunResponse,
   ScenarioParams,
   SimulationComparison,
   SimulationResult,
@@ -17,6 +18,7 @@ export type Action =
   | { type: 'setInterventions'; value: Intervention[] }
   | { type: 'removeIntervention'; id: string }
   | { type: 'setComparison'; value: SimulationComparison | null }
+  | { type: 'setRunTotals'; value: RunResponse }
   | { type: 'setStage'; value: Stage }
   | { type: 'selectRegion'; id: string | null }
   | { type: 'startPlacement'; value: Intervention }
@@ -32,6 +34,8 @@ export interface AppState {
   baseline: SimulationResult | null
   /** Last run shown in the 3D scene, with or without interventions. */
   current: SimulationResult | null
+  /** Cost and budget verdict of the last /api/run, shown next to the result. */
+  runTotals: RunResponse | null
   interventions: Intervention[]
   comparison: SimulationComparison | null
   stage: Stage
@@ -47,6 +51,7 @@ export const initialState: AppState = {
   scenario: { type: 'extreme_rain', intensity: 0.8, duration: 0.6 },
   baseline: null,
   current: null,
+  runTotals: null,
   interventions: [],
   comparison: null,
   stage: 'observe',
@@ -107,6 +112,13 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'setComparison':
       return { ...state, comparison: action.value }
 
+    case 'setRunTotals':
+      return {
+        ...state,
+        runTotals: action.value,
+        baseline: action.value.baseline,
+      }
+
     case 'setStage':
       return { ...state, stage: action.value }
 
@@ -141,8 +153,31 @@ export function scenarioEquals(a: ScenarioParams, b: ScenarioParams): boolean {
   return a.type === b.type && a.intensity === b.intensity && a.duration === b.duration
 }
 
-/** True when the visible result no longer matches the requested scenario. */
+/**
+ * Identity of an intervention for staleness purposes. The engine fills in a
+ * cost, so a field-by-field compare would report every result as stale.
+ */
+function interventionKey(intervention: Intervention): string {
+  const { type, region_id, location, impact_factor } = intervention
+  return `${type}|${region_id}|${location.x.toFixed(1)}|${location.y.toFixed(1)}|${impact_factor}`
+}
+
+export function interventionsEqual(a: Intervention[], b: Intervention[]): boolean {
+  if (a.length !== b.length) return false
+  const left = a.map(interventionKey).sort()
+  const right = b.map(interventionKey).sort()
+  return left.every((key, index) => key === right[index])
+}
+
+/**
+ * True when the visible result no longer matches what is on screen.
+ *
+ * Both halves matter: a changed scenario invalidates the numbers, and so does
+ * adding or removing an intervention, since the visible result is the
+ * combination of the two.
+ */
 export function isStale(state: AppState): boolean {
   if (!state.current) return false
-  return !scenarioEquals(state.current.scenario, state.scenario)
+  if (!scenarioEquals(state.current.scenario, state.scenario)) return true
+  return !interventionsEqual(state.current.interventions, state.interventions)
 }

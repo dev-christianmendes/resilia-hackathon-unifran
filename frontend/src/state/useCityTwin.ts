@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { api } from '../lib/api'
-import { DEFAULT_LAYERS } from '../lib/theme'
+import { DEFAULT_BUDGET_BRL, DEFAULT_LAYERS } from '../lib/theme'
 import type {
   CopilotRecommendation,
   Intervention,
   InterventionType,
   LayerKey,
+  CostCatalogueRow,
+  OptimizeResponse,
   Point,
   RegionResult,
   ScenarioType,
@@ -31,10 +33,21 @@ const initialCopilot: CopilotState = {
   question: '',
 }
 
+export interface OptimizerState {
+  loading: boolean
+  result: OptimizeResponse | null
+  error: string | null
+}
+
+const initialOptimizer: OptimizerState = { loading: false, result: null, error: null }
+
 export function useCityTwin() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>(DEFAULT_LAYERS)
   const [copilot, setCopilot] = useState<CopilotState>(initialCopilot)
+  const [budget, setBudget] = useState<number>(DEFAULT_BUDGET_BRL)
+  const [optimizer, setOptimizer] = useState<OptimizerState>(initialOptimizer)
+  const [costs, setCosts] = useState<CostCatalogueRow[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -46,6 +59,14 @@ export function useCityTwin() {
       .catch((error: unknown) => {
         if (!cancelled) dispatch({ type: 'setError', value: describeError(error) })
       })
+    // The price table is a reference, not a result: a failure here must not
+    // block the city itself.
+    void api
+      .costs()
+      .then((rows) => {
+        if (!cancelled) setCosts(rows)
+      })
+      .catch(() => undefined)
     return () => {
       cancelled = true
     }
@@ -57,25 +78,19 @@ export function useCityTwin() {
       dispatch({ type: 'setBusy', value: true })
       dispatch({ type: 'setError', value: null })
       try {
-        if (active.length === 0) {
-          const baseline = await api.simulate(state.scenario, [])
-          dispatch({ type: 'runSimulation', result: baseline })
-          dispatch({ type: 'setComparison', value: null })
-          return
-        }
-        const [result, comparison] = await Promise.all([
-          api.simulate(state.scenario, active),
-          api.compare(state.scenario, active),
-        ])
-        dispatch({ type: 'runSimulation', result })
-        dispatch({ type: 'setComparison', value: comparison })
+        const run = await api.run(state.scenario, active, budget ?? undefined)
+        dispatch({ type: 'runSimulation', result: run.mitigated })
+        // With nothing placed there is no comparison to show; an all-zero
+        // panel would only invite the reader to compare nothing with nothing.
+        dispatch({ type: 'setComparison', value: active.length === 0 ? null : run.comparison })
+        dispatch({ type: 'setRunTotals', value: run })
       } catch (error) {
         dispatch({ type: 'setError', value: describeError(error) })
       } finally {
         dispatch({ type: 'setBusy', value: false })
       }
     },
-    [state.scenario, state.interventions],
+    [budget, state.scenario, state.interventions],
   )
 
   const addIntervention = useCallback(
@@ -110,7 +125,12 @@ export function useCityTwin() {
     async (question: string) => {
       setCopilot((prev) => ({ ...prev, loading: true, question }))
       try {
-        const response = await api.copilot(state.scenario, state.interventions, question)
+        const response = await api.copilot(
+          state.scenario,
+          state.interventions,
+          question,
+          budget,
+        )
         setCopilot({
           loading: false,
           answer: response.answer,
@@ -127,7 +147,7 @@ export function useCityTwin() {
         }))
       }
     },
-    [state.scenario, state.interventions],
+    [budget, state.scenario, state.interventions],
   )
 
   const applySuggestion = useCallback((): Intervention | null => {
@@ -139,9 +159,45 @@ export function useCityTwin() {
     return addIntervention(suggestion.suggested_intervention, region.centroid, region.id, 0.75)
   }, [copilot.analysis, state.city, addIntervention])
 
+  /**
+   * Ask the engine for the portfolio that buys the most protected people for
+   * the budget, then show it for review. Nothing is applied without the user
+   * seeing it first.
+   */
+  const optimize = useCallback(
+    async (maxInterventions?: number) => {
+      setOptimizer((prev) => ({ ...prev, loading: true, error: null }))
+      try {
+        const result = await api.optimize(state.scenario, budget, maxInterventions)
+        setOptimizer({ loading: false, result, error: null })
+        return result
+      } catch (error) {
+        const message = describeError(error)
+        setOptimizer({ loading: false, result: null, error: message })
+        return null
+      }
+    },
+    [budget, state.scenario],
+  )
+
+  const applyOptimizerResult = useCallback(() => {
+    const selected = optimizer.result?.selected ?? []
+    if (selected.length === 0) return
+    setInterventions(
+      selected.map((proposal, index) => ({
+        id: `int-opt-${index}-${proposal.region_id}-${proposal.type}`,
+        type: proposal.type,
+        region_id: proposal.region_id,
+        location: proposal.location,
+        impact_factor: proposal.impact_factor,
+      })),
+    )
+  }, [optimizer.result, setInterventions])
+
   const reset = useCallback(() => {
     dispatch({ type: 'reset' })
     setCopilot(initialCopilot)
+    setOptimizer(initialOptimizer)
   }, [])
 
   const setScenarioType = useCallback((type: ScenarioType) => {
@@ -200,6 +256,12 @@ export function useCityTwin() {
     stale: isStale(state),
     layers,
     copilot,
+    budget,
+    setBudget,
+    optimizer,
+    optimize,
+    applyOptimizerResult,
+    costs,
     actions: {
       runSimulation,
       addIntervention,

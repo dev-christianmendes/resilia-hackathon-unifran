@@ -133,6 +133,11 @@ export function HeatEffect({
       )[0],
     [regions, riskByRegion],
   )
+  /** The haze has to clear the highest peak or it renders underground. */
+  const ceiling = useMemo(() => {
+    const highest = Math.max(...regions.map((r) => elevationToHeight(r.metrics.elevation_m)))
+    return (Number.isFinite(highest) ? highest : REGION_BASE) + REGION_BASE + 4
+  }, [regions])
 
   useFrame(({ clock }) => {
     if (!sun.current) return
@@ -155,7 +160,7 @@ export function HeatEffect({
         <sphereGeometry args={[6, 20, 20]} />
         <meshBasicMaterial color="#fb923c" transparent opacity={0.55 + intensity * 0.35} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, REGION_BASE - 8, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, ceiling, 0]}>
         <planeGeometry args={[METERS_TO_UNITS * 9000, METERS_TO_UNITS * 9000]} />
         <meshBasicMaterial color="#f97316" transparent opacity={0.06 + intensity * 0.14} />
       </mesh>

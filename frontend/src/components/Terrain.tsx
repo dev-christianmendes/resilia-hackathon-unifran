@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Html, Line } from '@react-three/drei'
 import { Shape } from 'three'
-import type { Region } from '../types'
+import type { Point, Region } from '../types'
 import { METERS_TO_UNITS, elevationToHeight, polygonToScene } from '../lib/geo'
 import { RISK_COLORS, formatNumber, riskFromColorLevel } from '../lib/theme'
 
@@ -9,6 +9,7 @@ const REGION_BASE = METERS_TO_UNITS * 40
 
 interface TerrainProps {
   regions: Region[]
+  boundary: Point[]
   showRisk: boolean
   showCriticalAreas: boolean
   showTerrain: boolean
@@ -20,6 +21,7 @@ interface TerrainProps {
 
 export function Terrain({
   regions,
+  boundary,
   showRisk,
   showCriticalAreas,
   showTerrain,
@@ -40,6 +42,22 @@ export function Terrain({
           <planeGeometry args={[METERS_TO_UNITS * 12000, METERS_TO_UNITS * 12000]} />
           <meshStandardMaterial color="#0b1016" roughness={1} metalness={0} />
         </mesh>
+      )}
+
+      {/*
+        The municipal line, drawn below the sub-basins. The model only covers
+        part of the municipality, so seeing the gap is the honest picture: the
+        regions are hydrographic basins, not districts of Franca.
+      */}
+      {boundary.length > 2 && (
+        <Line
+          points={[...boundary, boundary[0]].map((p) => [p.x * METERS_TO_UNITS, 0.02, -p.y * METERS_TO_UNITS])}
+          color="#64748b"
+          lineWidth={2}
+          dashed
+          dashSize={2.4}
+          gapSize={1.6}
+        />
       )}
 
       {shapes.map(({ region, shape }) => {
@@ -101,7 +119,7 @@ export function Terrain({
                 position={[
                   region.centroid.x * METERS_TO_UNITS,
                   y + 4,
-                  region.centroid.y * METERS_TO_UNITS,
+                  -region.centroid.y * METERS_TO_UNITS,
                 ]}
                 center
                 distanceFactor={90}

@@ -1,20 +1,31 @@
 import { useState } from 'react'
+import { isCostNotice } from '../types'
 import type {
+  CostCatalogueRow,
   Intervention,
   InterventionCatalogueItem,
   InterventionType,
+  OptimizeResponse,
   Region,
 } from '../types'
-import { INTERVENTION_META } from '../lib/theme'
+import { BUDGET_PRESETS, INTERVENTION_META, formatBRL, formatNumber } from '../lib/theme'
 import { Button, Panel } from '../components/ui'
 
 export function MitigatePanel({
   regions,
   interventions,
   catalogue,
+  costs,
   placement,
   hasSimulation,
   busy,
+  budget,
+  optimizer,
+  spentBrl,
+  withinBudget,
+  onBudgetChange,
+  onOptimize,
+  onApplyOptimizer,
   onStartPlacement,
   onCancelPlacement,
   onRemove,
@@ -24,9 +35,17 @@ export function MitigatePanel({
   regions: Region[]
   interventions: Intervention[]
   catalogue: InterventionCatalogueItem[]
+  costs: CostCatalogueRow[]
   placement: Intervention | null
   hasSimulation: boolean
   busy: boolean
+  budget: number
+  optimizer: { loading: boolean; result: OptimizeResponse | null; error: string | null }
+  spentBrl: number | null
+  withinBudget: boolean
+  onBudgetChange: (value: number) => void
+  onOptimize: () => void
+  onApplyOptimizer: () => void
   onStartPlacement: (intervention: Intervention) => void
   onCancelPlacement: () => void
   onRemove: (id: string) => void
@@ -63,6 +82,140 @@ export function MitigatePanel({
   return (
     <Panel title="Mitigação" subtitle="Insira intervenções e meça o efeito">
       <div className="space-y-4">
+        <div data-testid="budget-block">
+          <h4 className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+            Orçamento disponível
+          </h4>
+          <div className="mt-1.5 grid grid-cols-4 gap-1.5">
+            {BUDGET_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                onClick={() => onBudgetChange(preset.value)}
+                className={`rounded-lg border px-1.5 py-1.5 text-[11px] font-semibold transition-colors ${
+                  budget === preset.value
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
+                    : 'border-slate-800 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {spentBrl !== null && interventions.length > 0 && (
+            <div
+              className={`mt-2 rounded-lg border px-3 py-2 text-[11px] ${
+                withinBudget
+                  ? 'border-emerald-900 bg-emerald-950/40 text-emerald-200'
+                  : 'border-red-900 bg-red-950/40 text-red-200'
+              }`}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-semibold">
+                  {withinBudget ? 'Dentro do orçamento' : 'Acima do orçamento'}
+                </span>
+                <span className="font-mono">
+                  {formatBRL(spentBrl)} / {formatBRL(budget)}
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className={`h-full rounded-full ${
+                    withinBudget ? 'bg-emerald-500' : 'bg-red-500'
+                  }`}
+                  style={{
+                    width: `${Math.min(100, (spentBrl / Math.max(budget, 1)) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <Button
+            onClick={onOptimize}
+            disabled={optimizer.loading || busy}
+            className="mt-2 w-full"
+            variant="ghost"
+            testId="optimize-button"
+          >
+            {optimizer.loading ? 'Otimizando…' : '[ OTIMIZAR POR ORÇAMENTO ]'}
+          </Button>
+
+          {optimizer.error && (
+            <p className="mt-1.5 text-[11px] text-red-400">{optimizer.error}</p>
+          )}
+
+          {optimizer.result && optimizer.result.selected.length > 0 && (
+            <div
+              data-testid="optimizer-result"
+              className="mt-2 rounded-lg border border-emerald-900 bg-emerald-950/30 px-3 py-2"
+            >
+              <div className="flex items-baseline justify-between gap-2 text-[11px] text-emerald-200">
+                <span className="font-semibold">
+                  {optimizer.result.selected.length} obras em{' '}
+                  {optimizer.result.selected.length &&
+                    new Set(optimizer.result.selected.map((p) => p.region_id)).size}{' '}
+                  regiões
+                </span>
+                <span className="font-mono">{formatBRL(optimizer.result.spent_brl)}</span>
+              </div>
+              <p className="mt-0.5 text-[11px] text-emerald-300/90">
+                Evita {formatNumber(optimizer.result.affected_population_avoided)} pessoas
+              </p>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Limitado por{' '}
+                {optimizer.result.binding_constraint === 'budget'
+                  ? 'orcamento'
+                  : 'número de obras'}{' '}
+                • {formatBRL(optimizer.result.remaining_brl)} restantes
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {optimizer.result.selected.map((proposal) => (
+                  <li
+                    key={`${proposal.region_id}-${proposal.type}`}
+                    className="text-[10px] text-slate-400"
+                  >
+                    <span className="text-slate-200">{proposal.region_name}</span> —{' '}
+                    {INTERVENTION_META[proposal.type].label} •{' '}
+                    {formatBRL(proposal.cost_brl)} • evita{' '}
+                    {formatNumber(proposal.expected_affected_population_avoided)}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-[10px] text-slate-500">
+                {optimizer.result.cost_assumptions}
+              </p>
+              <Button onClick={onApplyOptimizer} variant="success" className="mt-2 w-full">
+                Aplicar este portfólio
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {costs.length > 0 && (
+          <details className="rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
+            <summary className="cursor-pointer text-[11px] font-semibold text-slate-300">
+              De onde vêm os preços
+            </summary>
+            <ul className="mt-1.5 space-y-1">
+              {costs.map((cost) =>
+                isCostNotice(cost) ? (
+                  <li key={cost.type} className="text-[10px] text-slate-500">
+                    {cost.notice}
+                  </li>
+                ) : (
+                  <li key={cost.type} className="text-[10px] text-slate-500">
+                    <span className="text-slate-300">{cost.unit_label}</span>:{' '}
+                    {formatBRL(cost.unit_cost_brl)}/{cost.unit} • teto{' '}
+                    {formatBRL(cost.maximum_brl)}
+                  </li>
+                ),
+              )}
+            </ul>
+          </details>
+        )}
+
         <div>
           <h4 className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
             + Intervenção

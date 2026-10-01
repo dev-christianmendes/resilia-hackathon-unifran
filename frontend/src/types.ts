@@ -93,6 +93,8 @@ export interface City {
   id: string
   name: string
   bounds: { min_x: number; max_x: number; min_y: number; max_y: number }
+  /** Official IBGE municipal outline, as an open ring. */
+  boundary: Point[]
   regions: Region[]
   roads: Road[]
   buildings: Building[]
@@ -179,6 +181,66 @@ export interface InterventionCatalogueItem {
   effects: Record<string, number>
 }
 
+export interface RunResponse {
+  scenario: ScenarioParams
+  baseline: SimulationResult
+  mitigated: SimulationResult
+  comparison: SimulationComparison
+  total_cost_brl: number
+  budget_brl: number | null
+  within_budget: boolean
+}
+
+export interface ProposedIntervention {
+  label: string
+  type: InterventionType
+  region_id: string
+  region_name: string
+  location: Point
+  impact_factor: number
+  cost_brl: number
+  expected_affected_population_avoided: number
+  rationale: string
+}
+
+export interface OptimizeResponse {
+  scenario: ScenarioParams
+  selected: ProposedIntervention[]
+  rejected_budget: ProposedIntervention[]
+  spent_brl: number
+  budget_brl: number
+  remaining_brl: number
+  binding_constraint: 'budget' | 'max_interventions'
+  affected_population_avoided: number
+  risk_reduction_pct: number
+  baseline_totals: SimulationTotals
+  projected_totals: SimulationTotals
+  cost_assumptions: string
+  disclaimer: string
+}
+
+/** One row of the published cost table. */
+export interface CostCatalogueItem {
+  type: string
+  unit: string
+  unit_label: string
+  unit_cost_brl: number
+  minimum_brl: number
+  maximum_brl: number
+}
+
+/** Trailing row of the cost table carrying the disclaimer. */
+export interface CostNotice {
+  type: 'notice'
+  notice: string
+}
+
+export type CostCatalogueRow = CostCatalogueItem | CostNotice
+
+export function isCostNotice(row: CostCatalogueRow): row is CostNotice {
+  return row.type === 'notice'
+}
+
 export interface CopilotFactor {
   label: string
   weight: number
@@ -193,6 +255,7 @@ export interface CopilotRecommendation {
   factors: CopilotFactor[]
   suggested_intervention: InterventionType
   rationale: string
+  estimated_cost_brl: number
   expected_effect: Record<string, number | string>
   testable: boolean
   disclaimer: string

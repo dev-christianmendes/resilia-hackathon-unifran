@@ -72,6 +72,7 @@ export function Button({
   disabled = false,
   type = 'button',
   className = '',
+  testId,
 }: {
   children: ReactNode
   onClick?: () => void
@@ -79,6 +80,7 @@ export function Button({
   disabled?: boolean
   type?: 'button' | 'submit'
   className?: string
+  testId?: string
 }) {
   const variants: Record<string, string> = {
     primary: 'bg-sky-500 text-slate-950 hover:bg-sky-400 disabled:bg-slate-700 disabled:text-slate-400',
@@ -92,6 +94,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      data-testid={testId}
     >
       {children}
     </button>
