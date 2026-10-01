@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+      URBAN_COPILOT_API_KEY: ${URBAN_COPILOT_API_KEY:-}
+      URBAN_COPILOT_BASE_URL: ${URBAN_COPILOT_BASE_URL:-}
+      URBAN_COPILOT_MODEL: ${URBAN_COPILOT_MODEL:-}
+    ports:
+      - '8000:8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request;urllib.request.urlopen("http://127.0.0.1:8000/api/health")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '8080:80'
