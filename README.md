@@ -1,5 +1,10 @@
 # CITY TWIN — RESILIA
 
+**Alunos do grupo**
+- Paulo Vitor de Oliveira Foroni
+- Christian Rafael Gonçalves Mendes
+- Pedro Henrique Alves
+
 Digital twin urbano para explorar a resiliência de Franca/SP diante de chuva extrema, onda de calor, granizo, ventania e queimadas de grande porte. A POC permite observar o território, simular um evento, testar intervenções e comparar estimativas antes/depois.
 
 > **Importante:** todos os números são estimativas do modelo da POC. Não são previsões operacionais e não substituem dados oficiais, estudos hidráulicos, dimensionamento de obras ou decisões da Defesa Civil.
@@ -432,44 +437,3 @@ docs/
   screenshots/                telas da aplicação em execução
 ```
 
-## Limitações e bugs conhecidos
-
-Esta seção é deliberadamente específica: os itens marcados abaixo foram observados nesta revisão, executando a POC localmente. Uma banca valoriza mais reconhecer um defeito do que descobrir um depois de uma pergunta.
-
-### Correções rápidas de configuração
-
-- **`VITE_API_PROXY` com padrão 8001.** `frontend/vite.config.ts:12` aponta para `http://localhost:8001`, enquanto o backend documentado roda em 8000. Sem a variável, a interface inteira falha com `502` e mostra "Não foi possível carregar a cidade". Esta é a primeira coisa a checar se a POC não subir.
-- **`localhost` versus `127.0.0.1`.** O Uvicorn escuta em IPv4; em sistemas onde `localhost` resolve para `::1` primeiro, o proxy do Vite falha. Prefira o endereço numérico.
-
-### Defeitos de interface confirmados em execução
-
-- **Sobreposição de rótulos.** Os rótulos de região do mapa 3D são posicionados com `z-index` na casa dos milhões (biblioteca de rótulos HTML sobre o canvas). Isso faz com que eles **interceptem cliques destinados aos painéis laterais**, chegando a bloquear botões das etapas. Em uso manual com o mouse, o sintoma é um botão que "não responde"; em automação, o clique é simplesmente perdido. Afeta principalmente os painéis sobrepostos ao canvas.
-- **Posicionamento de obra pouco tolerante.** O plano invisível de posicionamento cobre uma área limitada em torno da origem. Cliques fora dela não posicionam nada e **não dão qualquer retorno** — a interface permanece armada como se esperasse um clique. Durante a preparação das capturas, apenas 1 de 16 pontos testados na malha da tela aceitou a obra. Um contorno visual mais generoso ou um aviso de "clique dentro da área válida" tornaria a etapa mais previsível.
-- **Alertas de console do React.** A navegação pela POC emite "two children with the same key" e avisos de desmontamento de raiz durante a renderização. Não quebram a aplicação, mas indicam listas que precisam de chave única e um ciclo de vida de limpeza.
-- **Fator sem tradução.** O painel de fatores do modelo traduz dez chaves para português, mas chaves como `susceptibility` e `risk` passam em inglês puro na interface.
-- **Barras da comparação compartilham escala.** Os três grupos (população, vias, equipamentos) usam um único valor máximo, calculado a partir da população. Como a população afetada é da ordem das centenas de milhares e as vias de centenas, as barras de vias e equipamentos ficam visualmente ínfimas perto de 2% de largura, embora a variação percentual seja relevante. Cada grupo deveria ter a própria escala.
-- **Controle antes/depois é decorativo.** O slider destaca um dos dois cartões, mas **não faz um wipe ou qualquer transição visual na imagem do mapa**. A comparação dos números é real; a comparação visual, não.
-- **Custo só atualiza após re-simular.** O valor gasto no orçamento vem da última resposta de `/api/run`. Mover o slider de impacto de uma obra ou adicionar e remover intervenções não recalcula a faixa até o usuário apertar **COMPARAR COM INTERVENÇÕES**.
-- **Região com nome genérico.** As sub-bacias sem nome próprio aparecem como "Curso d'água sem nome", "… (2)", "… (15)". É tecnicamente correto e honesto, mas polui o ranking; um identificador mais estável ajudaria a leitura.
-
-### Limitações de escopo
-
-- A cidade é baseada nos fixtures de Franca/SP e carregada em memória; não há persistência nem autenticação.
-- O motor é determinístico e usa heurísticas para risco, vizinhança, custos e propagação de efeitos; **não é um modelo hidráulico ou climático operacional**. Não substitui estudo de dimensionamento.
-- **Apenas 32,4% da área do município é modelada** — a janela urbana cobre a área urbanizada, não o território inteiro. Regiões afetadas que caem fora do município são marcadas com `within_municipality: false` em vez de recortadas.
-- **A população é estimada por rateio**, proporcional à densidade de edificações do OSM, e não por setor censitário. A vulnerabilidade social é um **proxy pela densidade do tecido urbano**, não por renda ou por indicador de vulnerabilidade oficial.
-- A impermeabilidade usa **extensão de via por km²** como proxy de área impermeabilizada.
-- Os **pontos de vulnerabilidade documentados não são desenhados no mapa**. Eles influenciam o cálculo, mas a banca não consegue vê-los, o que pode gerar a pergunta "por que a Av. São Vicente está entre as mais críticas e não aparece marcada?". Desenhar esses cinco pontos como marcadores seria uma evolução barata e de alto impacto na demonstração.
-- A geometria 3D é otimizada com instancing em camadas repetitivas. Os cursos d'água são renderizados como linhas leves; uma fita de água animada é uma evolução futura.
-- Granizo, ventania e queimada usam efeitos visuais leves em 3D; o detalhamento é maior para chuva e calor.
-- **A pergunta do usuário não altera a análise heurística.** No modo offline, o Copilot sempre avalia o cenário e responde sobre ele; a pergunta é usada de fato apenas quando há LLM configurada.
-- O banco de dados e PostGIS foram deliberadamente adiados. A próxima evolução natural é substituir o carregamento integral por consultas e versionamento de dados geoespaciais.
-- **Código morto identificado na revisão:** o componente `MetricBar` não é usado em lugar nenhum, assim como `sortRegionsByName` e `regionCentre` em `lib/geo.ts`, e o campo `baseline` no estado do reducer é escrito mas nunca lido.
-
-## Decisões de projeto
-
-- **Fluxo em quatro etapas em vez de painel único.** A ordem observar → simular → mitigar → comparar obriga a banca a passar pela leitura do território antes de ver um número. Um painel único permitiria pular direto para o resultado e perder o argumento.
-- **A IA propõe, o motor mede.** O Copilot nunca injeta um número próprio: ele escolhe uma intervenção, e o motor re-executa para dizer o que acontece. É o que permite rodar a POC sem chave de API e ainda assim defender os números.
-- **O custo é declarado como hipótese.** Em vez de esconder a falta de dados de orçamento, o modelo publica unidade, piso, teto e um aviso explícito de que são ordens de grandeza.
-- **Dados geodésicos, renderização planar.** A cidade é armazenada em WGS84 e desenhada em um plano métrico local; o `crs` e a `reference_scale_m` são publicados na API para que nenhum cliente precise inferir essa conversão.
-- **Uploads e persistência fora do escopo.** Não há envio de dados nem histórico de cenários. A POC roda com o território empacotado em memória, o que a torna determinística e reproduzível em uma apresentação.
