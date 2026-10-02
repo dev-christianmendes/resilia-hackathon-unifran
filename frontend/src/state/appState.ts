@@ -80,7 +80,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...initialState,
         city: action.value,
         scenario: state.scenario,
-        selectedRegionId: action.value.regions[0]?.id ?? null,
+        selectedRegionId: null,
       }
 
     case 'setScenarioType':

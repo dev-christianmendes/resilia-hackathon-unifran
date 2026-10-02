@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { api } from '../lib/api'
-import { DEFAULT_BUDGET_BRL, DEFAULT_LAYERS } from '../lib/theme'
+import { DEFAULT_BUDGET_BRL, DEFAULT_LAYERS, LAYER_PRESETS } from '../lib/theme'
 import type {
   CopilotRecommendation,
   Intervention,
@@ -232,6 +232,11 @@ export function useCityTwin() {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }))
   }, [])
 
+  const setLayerPreset = useCallback((name: string) => {
+    const preset = LAYER_PRESETS[name]
+    if (preset) setLayers(preset)
+  }, [])
+
   const selectedRegion = useMemo(
     () => state.city?.regions.find((r) => r.id === state.selectedRegionId) ?? null,
     [state.city, state.selectedRegionId],
@@ -278,6 +283,7 @@ export function useCityTwin() {
       startPlacement,
       cancelPlacement,
       toggleLayer,
+      setLayerPreset,
     } satisfies Record<string, unknown>,
   }
 }

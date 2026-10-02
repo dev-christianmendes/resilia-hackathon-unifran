@@ -85,14 +85,20 @@ export const FACILITY_META: Record<string, { label: string; color: string; icon:
 
 export const DEFAULT_LAYERS: Record<LayerKey, boolean> = {
   terrain: true,
-  roads: true,
-  buildings: true,
-  vegetation: true,
-  facilities: true,
+  roads: false,
+  buildings: false,
+  vegetation: false,
+  facilities: false,
   criticalAreas: true,
   risk: true,
   population: false,
   emergencyRoutes: false,
+}
+
+export const LAYER_PRESETS: Record<string, Record<LayerKey, boolean>> = {
+  Alagamento: { ...DEFAULT_LAYERS, roads: true },
+  Calor: { ...DEFAULT_LAYERS, vegetation: true },
+  'Vulnerabilidade social': { ...DEFAULT_LAYERS, population: true, facilities: true },
 }
 
 export const LAYER_META: Record<LayerKey, { label: string; hint: string }> = {

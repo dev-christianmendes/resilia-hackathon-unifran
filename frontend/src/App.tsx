@@ -135,12 +135,16 @@ export default function App() {
                   Guia rápido · {tourStep + 1}/3
                 </div>
                 <h2 className="mt-2 text-xl font-semibold text-slate-100">
-                  {['Observe antes de decidir', 'Simule um evento', 'Teste e compare soluções'][tourStep]}
+                  {[
+                    'Observe antes de decidir',
+                    'Simule um evento',
+                    'Teste e compare soluções',
+                  ][tourStep]}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-400">
                   {[
                     'Clique em uma região ou escolha uma das áreas mais críticas para entender o território.',
-                    'Escolha chuva extrema ou onda de calor e ajuste a intensidade para ver o risco mudar.',
+                    'Escolha o cenário, ajuste a intensidade para ver o risco mudar e pressione Simular.',
                     'Adicione uma intervenção, rode novamente e compare o antes e depois.',
                   ][tourStep]}
                 </p>
@@ -210,6 +214,7 @@ export default function App() {
               results={resultsByRegion}
               totals={state.current?.totals ?? null}
               onSelectRegion={actions.selectRegion}
+              showDetail={false}
             />
           )}
           {stage === 'simulate' && (
@@ -307,7 +312,7 @@ export default function App() {
               Camadas
             </summary>
             <div className="w-56 border-t border-slate-700 p-2">
-              <LayerPanel layers={layers} onToggle={actions.toggleLayer} />
+              <LayerPanel layers={layers} onToggle={actions.toggleLayer} onPreset={actions.setLayerPreset} />
             </div>
           </details>
 
@@ -325,6 +330,8 @@ export default function App() {
               results={resultsByRegion}
               totals={state.current?.totals ?? null}
               onSelectRegion={actions.selectRegion}
+              showRanking={false}
+              showDetail
             />
           ) : (
             <EmptyState

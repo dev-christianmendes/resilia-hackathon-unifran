@@ -1,18 +1,32 @@
 import type { LayerKey } from '../types'
-import { LAYER_META } from '../lib/theme'
+import { LAYER_META, LAYER_PRESETS } from '../lib/theme'
 import { Panel } from '../components/ui'
 
 export function LayerPanel({
   layers,
   onToggle,
+  onPreset,
 }: {
   layers: Record<LayerKey, boolean>
   onToggle: (key: LayerKey) => void
+  onPreset: (name: string) => void
 }) {
   const keys = Object.keys(LAYER_META) as LayerKey[]
 
   return (
     <Panel title="Camadas" subtitle="O que aparece na cidade 3D">
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {Object.keys(LAYER_PRESETS).map((name) => (
+          <button
+            key={name}
+            type="button"
+            onClick={() => onPreset(name)}
+            className="rounded-full border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:border-sky-400 hover:text-sky-200"
+          >
+            {name}
+          </button>
+        ))}
+      </div>
       <ul className="space-y-1">
         {keys.map((key) => {
           const meta = LAYER_META[key]
