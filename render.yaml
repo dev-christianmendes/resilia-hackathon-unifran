@@ -1,0 +1,14 @@
+# Blueprint do Render para a API (Dashboard → New → Blueprint → este repositório).
+# O frontend vai para a Vercel; ajuste CORS_ORIGINS com a URL final dela.
+services:
+  - type: web
+    name: resilia-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: CORS_ORIGINS
+        value: https://resilia-city-twin.vercel.app

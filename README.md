@@ -165,6 +165,12 @@ docker compose up --build
 
 O frontend aguarda o healthcheck do backend antes de iniciar.
 
+### Deploy (Render + Vercel)
+
+- **API (Render):** *New → Blueprint* apontando para este repositório. O `render.yaml` cria o serviço `resilia-api` a partir de `backend/Dockerfile`, com healthcheck em `/api/health`. O container usa a variável `PORT` do Render (8000 quando ausente). No plano gratuito o serviço hiberna, e a primeira requisição depois de um tempo parado leva cerca de 30 a 60 segundos.
+- **Frontend (Vercel):** importe o repositório com *Root Directory* `frontend` (preset Vite) e defina `VITE_API_BASE_URL` com a URL do Render, por exemplo `https://resilia-api.onrender.com`.
+- Ajuste `CORS_ORIGINS` no Render para a URL final da Vercel.
+
 ## Configuração
 
 Copie `backend/.env.example` para `backend/.env` quando precisar personalizar o ambiente. O backend carrega esse arquivo via `python-dotenv`.
