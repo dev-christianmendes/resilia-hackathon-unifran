@@ -162,3 +162,10 @@ export const BUDGET_PRESETS = [
   { value: 20_000_000, label: 'R$ 20 mi' },
   { value: 50_000_000, label: 'R$ 50 mi' },
 ]
+
+/** Headline for the population change; the backend reports after-vs-before, so a reduction is negative. */
+export function overallEffect(pct: number): string {
+  const rounded = Math.round(Math.abs(pct))
+  if (rounded === 0) return 'Sem variação nas pessoas afetadas'
+  return pct < 0 ? `${rounded}% menos pessoas afetadas` : `${rounded}% mais pessoas afetadas`
+}
