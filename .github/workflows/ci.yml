@@ -95,7 +95,7 @@ jobs:
           if-no-files-found: ignore
 
   frontend:
-    name: Frontend (tipos, lint, build)
+    name: Frontend (tipos, lint, testes, build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -113,6 +113,8 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Testes
+        run: npm test
       - name: Build
         run: npm run build
 
