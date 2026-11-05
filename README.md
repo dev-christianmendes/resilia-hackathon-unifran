@@ -436,3 +436,9 @@ docs/
   screenshots/                telas da aplicação em execução
 ```
 
+
+## Licença
+
+O **código** está sob a licença [MIT](LICENSE).
+
+Os **dados** em `backend/app/data/fixtures/franca/` não são cobertos por ela: cada camada segue a licença da fonte original (OpenStreetMap sob ODbL, IBGE sob CC-BY-SA 4.0, relevo SRTM via AWS Terrain Tiles e documento público da Prefeitura de Franca), conforme [`SOURCES.md`](backend/app/data/fixtures/franca/SOURCES.md). Ao redistribuir os dados, mantenha as atribuições indicadas lá.
