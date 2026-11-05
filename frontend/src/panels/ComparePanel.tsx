@@ -1,5 +1,5 @@
 import type { SimulationComparison } from '../types'
-import { formatNumber, formatSigned } from '../lib/theme'
+import { formatNumber, formatSigned, overallEffect } from '../lib/theme'
 import { Panel } from '../components/ui'
 import { useState } from 'react'
 
@@ -18,8 +18,6 @@ export function ComparePanel({ comparison }: { comparison: SimulationComparison 
   }
 
   const { baseline, mitigated, delta, per_region } = comparison
-  const max = Math.max(baseline.affected_population, mitigated.affected_population, 1)
-
   const rows = [
     {
       label: 'População afetada',
@@ -65,7 +63,7 @@ export function ComparePanel({ comparison }: { comparison: SimulationComparison 
           <div className="flex items-baseline justify-between">
             <span className="text-xs font-semibold text-slate-200">Efeito geral</span>
             <span className="text-lg font-bold text-emerald-300">
-              {delta.affected_population_pct.toFixed(0)}% menos pessoas afetadas
+              {overallEffect(delta.affected_population_pct)}
             </span>
           </div>
           <label className="mt-3 block text-[11px] text-slate-400">
@@ -105,8 +103,8 @@ export function ComparePanel({ comparison }: { comparison: SimulationComparison 
                   {row.pct.toFixed(1)}%
                 </span>
               </div>
-              <Bar label="ANTES" value={row.before} max={max} color="#64748b" />
-              <Bar label="DEPOIS" value={row.after} max={max} color="#22c55e" />
+              <Bar label="ANTES" value={row.before} max={Math.max(row.before, row.after)} color="#64748b" />
+              <Bar label="DEPOIS" value={row.after} max={Math.max(row.before, row.after)} color="#22c55e" />
             </div>
           ))}
         </div>

@@ -12,17 +12,21 @@ export function elevationToHeight(elevationM: number): number {
   return (elevationM - 720) * 0.012
 }
 
+/**
+ * Even-odd ray casting: a horizontal ray from (x, y) towards +x crosses the
+ * outline an odd number of times only when the point is inside.
+ */
 export function pointInRegion(region: Region, x: number, y: number): boolean {
-  return region.polygon.some(
-    (p, index) => {
-      const next = region.polygon[(index + 1) % region.polygon.length]
-      const crosses = p.y > y !== next.y > y
-      if (!crosses) return false
-      const t = (y - p.y) / (next.y - p.y)
-      const edgeX = p.x + t * (next.x - p.x)
-      return x < edgeX
-    },
-  )
+  const polygon = region.polygon
+  let inside = false
+  for (let index = 0, prev = polygon.length - 1; index < polygon.length; prev = index++) {
+    const p = polygon[index]
+    const q = polygon[prev]
+    if (p.y > y === q.y > y) continue
+    const edgeX = p.x + ((y - p.y) / (q.y - p.y)) * (q.x - p.x)
+    if (x < edgeX) inside = !inside
+  }
+  return inside
 }
 
 export function regionAt(regions: Region[], x: number, y: number): Region | null {
@@ -42,7 +46,7 @@ export function nearestRegion(regions: Region[], x: number, y: number): Region |
   return best
 }
 
-/** Region ordered west to east so the region list reads like a map. */
+/** Regions in alphabetical order (pt-BR collation). */
 export function sortRegionsByName(regions: Region[]): Region[] {
   return [...regions].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 }

@@ -1,5 +1,7 @@
 # CITY TWIN — RESILIA
 
+[![CI](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/ci.yml/badge.svg)](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/ci.yml) [![CD](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/cd.yml/badge.svg)](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/cd.yml)
+
 **Alunos do grupo**
 - Paulo Vitor de Oliveira Foroni
 - Christian Rafael Gonçalves Mendes
@@ -102,7 +104,7 @@ Todos os painéis têm estados de carregamento, vazio e erro. O botão **Reinici
 | --- | --- |
 | Frontend | React 19, TypeScript estrito, Vite, Tailwind CSS 4, React Three Fiber, drei, three |
 | Backend | Python 3.10+, FastAPI, Pydantic v2, Uvicorn |
-| Qualidade | pytest, pytest-asyncio, ruff, mypy, oxlint, TypeScript |
+| Qualidade | pytest, pytest-asyncio, ruff, mypy, Vitest, Testing Library, oxlint, TypeScript |
 | Deploy local | Docker Compose, Nginx para servir o frontend |
 
 ## Requisitos
@@ -138,14 +140,10 @@ Em outro terminal:
 ```bash
 cd frontend
 npm ci
-VITE_API_PROXY=http://127.0.0.1:8000 npm run dev
+npm run dev
 ```
 
-Acesse <http://localhost:5173>. O proxy do Vite envia `/api` para o backend.
-
-> **Atenção ao `VITE_API_PROXY`.** O padrão em `vite.config.ts` é `http://localhost:8001`, que **não** é a porta em que o backend sobe no passo 1 (8000). Sem a variável, todas as chamadas da interface falham com `502 Bad Gateway` e a tela mostra "Não foi possível carregar a cidade". Defina `VITE_API_PROXY=http://127.0.0.1:8000` — ou corrija o padrão em `vite.config.ts` para 8000.
-
-Use o endereço com `127.0.0.1` em vez de `localhost`: em máquinas onde `localhost` resolve primeiro para IPv6 (`::1`) e o Uvicorn escuta apenas em IPv4, o proxy falha com `502` mesmo com a porta correta.
+Acesse <http://localhost:5173>. O proxy do Vite envia `/api` para o backend em `http://127.0.0.1:8000`, a mesma porta do passo anterior. O padrão usa `127.0.0.1` em vez de `localhost` porque, em máquinas onde `localhost` resolve primeiro para IPv6 (`::1`), o proxy falharia com `502`.
 
 Para usar outra porta ou host:
 
@@ -167,6 +165,12 @@ docker compose up --build
 
 O frontend aguarda o healthcheck do backend antes de iniciar.
 
+### Deploy (Render + Vercel)
+
+- **API (Render):** *New → Blueprint* apontando para este repositório. O `render.yaml` cria o serviço `resilia-api` a partir de `backend/Dockerfile`, com healthcheck em `/api/health`. O container usa a variável `PORT` do Render (8000 quando ausente). No plano gratuito o serviço hiberna, e a primeira requisição depois de um tempo parado leva cerca de 30 a 60 segundos.
+- **Frontend (Vercel):** importe o repositório com *Root Directory* `frontend` (preset Vite) e defina `VITE_API_BASE_URL` com a URL do Render, por exemplo `https://resilia-api.onrender.com`.
+- Ajuste `CORS_ORIGINS` no Render para a URL final da Vercel.
+
 ## Configuração
 
 Copie `backend/.env.example` para `backend/.env` quando precisar personalizar o ambiente. O backend carrega esse arquivo via `python-dotenv`.
@@ -177,7 +181,7 @@ Copie `backend/.env.example` para `backend/.env` quando precisar personalizar o 
 | `URBAN_COPILOT_API_KEY` | vazio | Chave opcional de um provedor compatível com a API da OpenAI |
 | `URBAN_COPILOT_BASE_URL` | vazio | Base URL do provedor LLM |
 | `URBAN_COPILOT_MODEL` | vazio | Nome do modelo |
-| `VITE_API_PROXY` | `http://localhost:8001` (em `vite.config.ts`) | Destino do proxy `/api` no desenvolvimento |
+| `VITE_API_PROXY` | `http://127.0.0.1:8000` (em `vite.config.ts`) | Destino do proxy `/api` no desenvolvimento |
 | `VITE_API_BASE_URL` | vazio | Prefixo absoluto de API no frontend; vazio usa o proxy do Vite |
 
 Sem as três variáveis do Copilot, a aplicação usa a análise heurística offline. Falhas no provedor também retornam à heurística; a interface identifica a fonte da recomendação.
@@ -395,11 +399,12 @@ Frontend:
 cd frontend
 npm run typecheck
 npm run lint
+npm test
 npm run build
 npm run preview
 ```
 
-A suíte do backend tem **82 testes** cobrindo o motor, os catálogos, o otimizador, o Copilot e as rotas. No CI (`.github/workflows/`) o mesmo conjunto roda em Python 3.12, com `ruff`, `mypy` e `actionlint`; as imagens de backend e frontend são publicadas no GHCR e um smoke test sobe a stack publicada para validar o healthcheck.
+A suíte do backend tem **82 testes** cobrindo o motor, os catálogos, o otimizador, o Copilot e as rotas. O frontend tem **29 testes** com Vitest e Testing Library: o reducer de estado, a geometria de seleção de regiões e o painel de comparação. No CI (`.github/workflows/`) os dois conjuntos rodam (backend em Python 3.12, com `ruff`, `mypy` e `actionlint`; frontend com tipos, lint e build); as imagens de backend e frontend são publicadas no GHCR e um smoke test sobe a stack publicada para validar o healthcheck.
 
 Para validar a integração manualmente, suba backend e frontend e percorra: selecionar região → simular → adicionar intervenção → re-simular → comparar.
 
@@ -437,3 +442,9 @@ docs/
   screenshots/                telas da aplicação em execução
 ```
 
+
+## Licença
+
+O **código** está sob a licença [MIT](LICENSE).
+
+Os **dados** em `backend/app/data/fixtures/franca/` não são cobertos por ela: cada camada segue a licença da fonte original (OpenStreetMap sob ODbL, IBGE sob CC-BY-SA 4.0, relevo SRTM via AWS Terrain Tiles e documento público da Prefeitura de Franca), conforme [`SOURCES.md`](backend/app/data/fixtures/franca/SOURCES.md). Ao redistribuir os dados, mantenha as atribuições indicadas lá.
