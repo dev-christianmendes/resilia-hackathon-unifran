@@ -81,7 +81,7 @@ export function PlacementGhost({
         <ringGeometry args={[3.2, 4.4, 32]} />
         <meshBasicMaterial color="#38bdf8" transparent opacity={0.75} side={2} />
       </mesh>
-      <Html center distanceFactor={90} position={[0, 9, 0]} style={{ pointerEvents: 'none' }}>
+      <Html zIndexRange={[50, 0]} center distanceFactor={90} position={[0, 9, 0]} style={{ pointerEvents: 'none' }}>
         <div className="rounded bg-sky-500 px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-slate-950">
           Clique na cidade para posicionar {label}
         </div>

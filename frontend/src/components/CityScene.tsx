@@ -17,6 +17,7 @@ import type {
   Waterway,
 } from '../types'
 import { METERS_TO_UNITS, regionAt } from '../lib/geo'
+import { labelRegions } from '../lib/labels'
 import { Buildings } from './Buildings'
 import { Facilities, RegionLabel } from './Facilities'
 import { FloodOverlay, HazardEffect, HeatEffect, RainEffect } from './ClimateEffects'
@@ -252,8 +253,14 @@ function CityContents({
         />
       )}
 
-      {labelRegions(regions, resultByRegion, selectedRegionId, hoveredRegionId).map((region) => (
+      {labelRegions(regions, resultByRegion, selectedRegionId, hoveredRegionId, (region) =>
+        displayRegionName(region, regions),
+      ).map((region) => (
         <Html
+          // drei only recomputes its z-index when the camera moves, so a card mounted after a
+          // simulation (camera still) kept `auto` and fell under the map pills. Pin the layer:
+          // above the pills (0–50), below the app overlays such as the onboarding (z-[100]).
+          wrapperClass="z-[55]!"
           key={region.id}
           position={[region.centroid.x * METERS_TO_UNITS, 16, -region.centroid.y * METERS_TO_UNITS]}
           center
@@ -309,32 +316,6 @@ function CityContents({
       )}
     </group>
   )
-}
-
-function labelRegions(
-  regions: Region[],
-  results: Record<string, RegionResult>,
-  selectedId: string | null,
-  hoveredId: string | null,
-): Region[] {
-  const ranked = [...regions].sort(
-    (a, b) => (results[b.id]?.risk ?? 0) - (results[a.id]?.risk ?? 0),
-  )
-  const labels: Region[] = []
-  const candidates = [
-    ...regions.filter((region) => region.id === selectedId || region.id === hoveredId),
-    ...ranked,
-  ]
-  for (const region of candidates) {
-    if (labels.some((item) => item.id === region.id)) continue
-    if (region.id !== selectedId && region.id !== hoveredId && labels.length >= 5) continue
-    const overlaps = labels.some(
-      (other) => Math.hypot(region.centroid.x - other.centroid.x, region.centroid.y - other.centroid.y) < 180,
-    )
-    if (overlaps && region.id !== selectedId && region.id !== hoveredId) continue
-    labels.push(region)
-  }
-  return labels
 }
 
 function friendlyRegionName(name: string): string {
