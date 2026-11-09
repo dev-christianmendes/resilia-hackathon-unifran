@@ -136,7 +136,7 @@ export function MitigatePanel({
           <Button
             onClick={onOptimize}
             disabled={optimizer.loading || busy}
-            className="mt-2 w-full"
+            className="mt-2 w-full text-balance"
             variant="ghost"
             testId="optimize-button"
           >
@@ -371,7 +371,7 @@ export function MitigatePanel({
         <Button
           onClick={onResimulate}
           disabled={busy || interventions.length === 0}
-          className="w-full"
+          className="w-full text-balance"
         >
           {busy ? 'Re-simulando…' : '[ COMPARAR COM INTERVENÇÕES ]'}
         </Button>
