@@ -121,7 +121,7 @@ export function Terrain({
             />
 
             {showPopulation && (
-              <Html
+              <Html zIndexRange={[50, 0]}
                 position={[
                   region.centroid.x * METERS_TO_UNITS,
                   y + 4,

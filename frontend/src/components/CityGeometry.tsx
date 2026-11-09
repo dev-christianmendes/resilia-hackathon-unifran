@@ -151,7 +151,7 @@ export function WaterwayLabels({ waterways }: { waterways: Waterway[] }) {
         const point = waterway.path[Math.floor(waterway.path.length / 2)]
         if (!point || !waterway.name) return null
         return (
-          <Html
+          <Html zIndexRange={[50, 0]}
             key={waterway.id}
             position={[point.x * METERS_TO_UNITS, REGION_BASE + 3.5, -point.y * METERS_TO_UNITS]}
             center
