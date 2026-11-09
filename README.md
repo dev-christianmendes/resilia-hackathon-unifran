@@ -2,14 +2,24 @@
 
 [![CI](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/ci.yml/badge.svg)](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/ci.yml) [![CD](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/cd.yml/badge.svg)](https://github.com/dev-christianmendes/resilia-hackathon-unifran/actions/workflows/cd.yml)
 
-**Alunos do grupo**
-- Paulo Vitor de Oliveira Foroni
-- Christian Rafael Gonçalves Mendes
-- Pedro Henrique Alves
+> 🏆 **Campeão do Hackathon Climático 2026 — Super El Niño: O Desafio do Século** (Unifran + Núcleo Tech)
+>
+> **Demo:** [resilia-city-twin.vercel.app](https://resilia-city-twin.vercel.app)
 
 Digital twin urbano para explorar a resiliência de Franca/SP diante de chuva extrema, onda de calor, granizo, ventania e queimadas de grande porte. A POC permite observar o território, simular um evento, testar intervenções e comparar estimativas antes/depois.
 
 > **Importante:** todos os números são estimativas do modelo da POC. Não são previsões operacionais e não substituem dados oficiais, estudos hidráulicos, dimensionamento de obras ou decisões da Defesa Civil.
+
+![Fluxo da demonstração: simular chuva extrema, otimizar o portfólio de obras por orçamento e comparar antes e depois](docs/demo.gif)
+
+## Resultado e equipe
+
+O City Twin ficou em **1º lugar** no *Hackathon Climático 2026 — Super El Niño: O Desafio do Século*, promovido pela Universidade de Franca (Unifran) com o Núcleo Tech, em 1º de outubro de 2026.
+
+**Equipe**
+- Christian Rafael Gonçalves Mendes
+- Paulo Vitor de Oliveira Foroni
+- Pedro Henrique Alves
 
 ## Visão rápida
 
@@ -165,11 +175,15 @@ docker compose up --build
 
 O frontend aguarda o healthcheck do backend antes de iniciar.
 
-### Deploy (Render + Vercel)
+### Deploy (Vercel)
 
-- **API (Render):** *New → Blueprint* apontando para este repositório. O `render.yaml` cria o serviço `resilia-api` a partir de `backend/Dockerfile`, com healthcheck em `/api/health`. O container usa a variável `PORT` do Render (8000 quando ausente). No plano gratuito o serviço hiberna, e a primeira requisição depois de um tempo parado leva cerca de 30 a 60 segundos.
-- **Frontend (Vercel):** importe o repositório com *Root Directory* `frontend` (preset Vite) e defina `VITE_API_BASE_URL` com a URL do Render, por exemplo `https://resilia-api.onrender.com`.
-- Ajuste `CORS_ORIGINS` no Render para a URL final da Vercel.
+Frontend e API ficam no mesmo projeto da Vercel, no mesmo domínio: não há CORS a configurar nem servidor que hiberna.
+
+- **Frontend:** build do Vite em `frontend/` (`vercel.json` define instalação, build e `frontend/dist` como saída).
+- **API:** `api/index.py` expõe o app FastAPI de `backend/` como função Python. O `vercel.json` reescreve `/api/*` para ela e inclui `backend/app/**` (código e fixtures) no pacote. As dependências da função estão no `requirements.txt` da raiz.
+- **Publicar:** `vercel deploy` gera uma prévia; `vercel deploy --prod` publica em produção.
+
+As imagens Docker continuam disponíveis para rodar em qualquer servidor (seção *Docker Compose* e o workflow de CD).
 
 ## Configuração
 
@@ -432,12 +446,18 @@ frontend/
     components/               mapa 3D, geometria e componentes UI
     panels/                   conteúdo contextual das etapas
     state/                    reducer e hook useCityTwin
-    lib/                      API, geometria, tema e formatação
+    lib/                      API, geometria, rótulos do mapa, tema e formatação
   Dockerfile
   vite.config.ts
   README.md
 
+api/
+  index.py                    entrada da API na Vercel (reexporta o app do backend)
+vercel.json                   build do frontend, função Python e rotas /api/*
+requirements.txt              dependências da função Python na Vercel
+
 docs/
+  demo.gif                    fluxo da demonstração
   visual-guide.svg            diagrama do fluxo
   screenshots/                telas da aplicação em execução
 ```
