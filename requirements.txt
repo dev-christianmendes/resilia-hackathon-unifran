@@ -1,0 +1,4 @@
+# Dependências da função Python na Vercel (api/index.py).
+# O backend completo, com as dependências de desenvolvimento, está em backend/pyproject.toml.
+fastapi>=0.115,<1.0
+python-dotenv>=1.0
